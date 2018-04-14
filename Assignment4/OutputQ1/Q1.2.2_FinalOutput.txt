@@ -1,0 +1,92 @@
+perceptronData: 
+
+
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[462   5]
+ [ 12 421]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[54  2]
+ [ 1 43]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[472   4]
+ [  8 416]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[47  0]
+ [ 0 53]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[466   1]
+ [  9 424]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[55  1]
+ [ 0 44]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[460  14]
+ [  0 426]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[49  0]
+ [ 0 51]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[473   4]
+ [  6 417]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[43  3]
+ [ 1 53]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[471   0]
+ [ 18 411]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[52  0]
+ [ 0 48]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[473   2]
+ [ 18 407]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[48  0]
+ [ 1 51]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[466   0]
+ [  0 434]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[57  0]
+ [ 0 43]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[457  11]
+ [  3 429]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[54  1]
+ [ 0 45]]
+-------------------------------------------------------------------------------------------------
+confusion_matrix(y_train, y_pred_train_final) = 
+ [[444  22]
+ [  4 430]]
+confusion_matrix(y_test, y_pred_test_final) = 
+ [[56  1]
+ [ 0 43]]
+-------------------------------------------------------------------------------------------------
+Train Accuracy =  [0.9811111111111112, 0.9866666666666667, 0.9888888888888889, 0.9844444444444445, 0.9888888888888889, 0.98, 0.9777777777777777, 1.0, 0.9844444444444445, 0.9711111111111111]
+Train Accuracy Mean =  0.9843333333333334
+Train Accuracy standard deviation =  0.0073442679420714415
+Train Recall =  [0.9811111111111112, 0.9866666666666667, 0.9888888888888889, 0.9844444444444445, 0.9888888888888889, 0.98, 0.9777777777777777, 1.0, 0.9844444444444445, 0.9711111111111111]
+Train Recall Mean =  0.9843333333333334
+Train Recall standard deviation =  0.0073442679420714415
+Train Precision =  [0.9811111111111112, 0.9866666666666667, 0.9888888888888889, 0.9844444444444445, 0.9888888888888889, 0.98, 0.9777777777777777, 1.0, 0.9844444444444445, 0.9711111111111111]
+Train Precision Mean =  0.9843333333333334
+Train Precision standard deviation =  0.0073442679420714415
+
+Test Accuracy =  [0.97, 1.0, 0.99, 1.0, 0.96, 1.0, 0.99, 1.0, 0.99, 0.99]
+Test Accuracy Mean =  0.9890000000000001
+Test Accuracy standard deviation =  0.013000000000000012
+Test Recall =  [0.97, 1.0, 0.99, 1.0, 0.96, 1.0, 0.99, 1.0, 0.99, 0.99]
+Test Recall Mean =  0.9890000000000001
+Test Recall standard deviation =  0.013000000000000012
+Test Precision =  [0.97, 1.0, 0.99, 1.0, 0.96, 1.0, 0.99, 1.0, 0.99, 0.99]
+Test Precision Mean =  0.9890000000000001
+Test Precision standard deviation =  0.013000000000000012
