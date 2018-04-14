@@ -1,0 +1,55 @@
+onfiguration files
+.DS_Store
+Desktop.ini
+
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# Output directory
+out/
+.idea/
+.project/
+target/
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IntellijIdea Specfic Files
+*.iml
+*.idea
+
+# Temp swp files
+*.swp
+~$mework1.doc
+
+# Mac OS Related file
+.DS_Store
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+#classpath
+.classpath
+
+#project
+.project
+
+#pydevproject
+.pydevproject
+
+#settings
+.settings
