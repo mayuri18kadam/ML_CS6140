@@ -1,4 +1,4 @@
-onfiguration files
+
 .DS_Store
 Desktop.ini
 
@@ -53,3 +53,13 @@ hs_err_pid*
 
 #settings
 .settings
+
+*.dll
+*.pyc
+*.exe
+*.csh
+*.fish
+*.h
+*.so
+.Python
+*.json
