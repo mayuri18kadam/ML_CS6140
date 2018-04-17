@@ -35,6 +35,7 @@ def calJ(z, X, centroids):
 def calNMI(dataset, k, centroids):
     nmi = 0
     X = dataset[:, 0:-1]
+    y = dataset[:, -1]
 
     # cal class entrophy
     outputCategory, count = np.unique(dataset[:,-1], return_counts=True)
@@ -55,14 +56,16 @@ def calNMI(dataset, k, centroids):
     condClassEntrophy = 0
     for i in range(len(z[0])):
         listY = []
+        m = 0
         for j in z[:,i]:
             if (j != 0):
-                listY.append(j)
+                listY.append(y[m])
+            m = m + 1
         outputY, countY = np.unique(listY, return_counts=True)
         total = np.sum(countY)
         outputYFinal = 0
-        for i in range(len(countY)):
-            prob = countY[i] / total
+        for b in range(len(countY)):
+            prob = countY[b] / total
             outputYFinal = outputYFinal + prob * (math.log(prob, 2))
         condClassEntrophy = condClassEntrophy + (-1 * outputYFinal * (countOne[i]/len(dataset)))
 
@@ -188,85 +191,85 @@ def main():
     print("SSE = ", J_soya[13])
     print("")
 
-    # fig1 = plt.figure()
-    # ax1 = fig1.add_subplot(121)
-    # ax1.set_title('dermatologyData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_derm, ls='--', marker='o', c='y', label='drop in error')
-    #
-    # ax2 = fig1.add_subplot(122)
-    # ax2.set_title('dermatologyData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiDerm, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig2 = plt.figure()
-    # ax1 = fig2.add_subplot(121)
-    # ax1.set_title('vowelsData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 30, 1), J_vowels, ls='--', marker='v', c='m', label='drop in error')
-    #
-    # ax2 = fig2.add_subplot(122)
-    # ax2.set_title('vowelsData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 30, 1), nmiVowels, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig3 = plt.figure()
-    # ax1 = fig3.add_subplot(121)
-    # ax1.set_title('glassData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_glass, ls='--', marker='^', c='c', label='drop in error')
-    #
-    # ax2 = fig3.add_subplot(122)
-    # ax2.set_title('glassData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiGlass, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig4 = plt.figure()
-    # ax1 = fig4.add_subplot(121)
-    # ax1.set_title('ecoliData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_ecoli, ls='--', marker='<', c='r', label='drop in error')
-    #
-    # ax2 = fig4.add_subplot(122)
-    # ax2.set_title('ecoliData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiEcoli, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig5 = plt.figure()
-    # ax1 = fig5.add_subplot(121)
-    # ax1.set_title('yeastData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_yeast, ls='--', marker='>', c='g', label='drop in error')
-    #
-    # ax2 = fig5.add_subplot(122)
-    # ax2.set_title('yeastData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiYeast, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig6 = plt.figure()
-    # ax1 = fig6.add_subplot(121)
-    # ax1.set_title('soybeanData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_soya, ls='--', marker='s', c='b', label='drop in error')
-    #
-    # ax2 = fig6.add_subplot(122)
-    # ax2.set_title('soybeanData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiSoya, ls='--', marker='o', c='y', label='NMI')
-    #
-    # plt.show()
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(121)
+    ax1.set_title('dermatologyData')
+    ax1.set_xlabel('Number of clusters')
+    ax1.set_ylabel('Objective function / SSE')
+    ax1.plot(np.arange(1, 20, 1), J_derm, ls='--', marker='o', c='y', label='drop in error')
+
+    ax2 = fig1.add_subplot(122)
+    ax2.set_title('dermatologyData')
+    ax2.set_xlabel('Number of clusters')
+    ax2.set_ylabel('NMI')
+    ax2.plot(np.arange(1, 20, 1), nmiDerm, ls='--', marker='o', c='y', label='NMI')
+
+    fig2 = plt.figure()
+    ax1 = fig2.add_subplot(121)
+    ax1.set_title('vowelsData')
+    ax1.set_xlabel('Number of clusters')
+    ax1.set_ylabel('Objective function / SSE')
+    ax1.plot(np.arange(1, 30, 1), J_vowels, ls='--', marker='v', c='m', label='drop in error')
+
+    ax2 = fig2.add_subplot(122)
+    ax2.set_title('vowelsData')
+    ax2.set_xlabel('Number of clusters')
+    ax2.set_ylabel('NMI')
+    ax2.plot(np.arange(1, 30, 1), nmiVowels, ls='--', marker='o', c='y', label='NMI')
+
+    fig3 = plt.figure()
+    ax1 = fig3.add_subplot(121)
+    ax1.set_title('glassData')
+    ax1.set_xlabel('Number of clusters')
+    ax1.set_ylabel('Objective function / SSE')
+    ax1.plot(np.arange(1, 20, 1), J_glass, ls='--', marker='^', c='c', label='drop in error')
+
+    ax2 = fig3.add_subplot(122)
+    ax2.set_title('glassData')
+    ax2.set_xlabel('Number of clusters')
+    ax2.set_ylabel('NMI')
+    ax2.plot(np.arange(1, 20, 1), nmiGlass, ls='--', marker='o', c='y', label='NMI')
+
+    fig4 = plt.figure()
+    ax1 = fig4.add_subplot(121)
+    ax1.set_title('ecoliData')
+    ax1.set_xlabel('Number of clusters')
+    ax1.set_ylabel('Objective function / SSE')
+    ax1.plot(np.arange(1, 20, 1), J_ecoli, ls='--', marker='<', c='r', label='drop in error')
+
+    ax2 = fig4.add_subplot(122)
+    ax2.set_title('ecoliData')
+    ax2.set_xlabel('Number of clusters')
+    ax2.set_ylabel('NMI')
+    ax2.plot(np.arange(1, 20, 1), nmiEcoli, ls='--', marker='o', c='y', label='NMI')
+
+    fig5 = plt.figure()
+    ax1 = fig5.add_subplot(121)
+    ax1.set_title('yeastData')
+    ax1.set_xlabel('Number of clusters')
+    ax1.set_ylabel('Objective function / SSE')
+    ax1.plot(np.arange(1, 20, 1), J_yeast, ls='--', marker='>', c='g', label='drop in error')
+
+    ax2 = fig5.add_subplot(122)
+    ax2.set_title('yeastData')
+    ax2.set_xlabel('Number of clusters')
+    ax2.set_ylabel('NMI')
+    ax2.plot(np.arange(1, 20, 1), nmiYeast, ls='--', marker='o', c='y', label='NMI')
+
+    fig6 = plt.figure()
+    ax1 = fig6.add_subplot(121)
+    ax1.set_title('soybeanData')
+    ax1.set_xlabel('Number of clusters')
+    ax1.set_ylabel('Objective function / SSE')
+    ax1.plot(np.arange(1, 20, 1), J_soya, ls='--', marker='s', c='b', label='drop in error')
+
+    ax2 = fig6.add_subplot(122)
+    ax2.set_title('soybeanData')
+    ax2.set_xlabel('Number of clusters')
+    ax2.set_ylabel('NMI')
+    ax2.plot(np.arange(1, 20, 1), nmiSoya, ls='--', marker='o', c='y', label='NMI')
+
+    plt.show()
 
 
 if __name__ == "__main__": main()
