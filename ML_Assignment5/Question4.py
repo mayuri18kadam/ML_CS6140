@@ -33,57 +33,56 @@ def calJ(z, X, centroids):
     return J
 
 def calNMI(dataset, k, centroids):
-    nmi = 0
     X = dataset[:, 0:-1]
     y = dataset[:, -1]
 
     # cal class entrophy
-    outputCategory, count = np.unique(dataset[:,-1], return_counts=True)
+    outputCategory, count = np.unique(dataset[:, -1], return_counts=True)
     classEntrophyFinal = 0
     for i in range(len(count)):
-        prob = count[i]/len(dataset)
-        classEntrophyFinal = classEntrophyFinal - prob*(math.log(prob, 2))
+        prob = count[i] / len(dataset)
+        classEntrophyFinal = classEntrophyFinal - prob * (math.log(prob, 2))
 
     # cal cluster entrophy
     z = calZ(X, centroids)
     countOne = np.count_nonzero(z, axis=0)
     clusterEntrophyFinal = 0
     for i in range(len(countOne)):
-        prob = countOne[i]/len(dataset)
-        clusterEntrophyFinal = clusterEntrophyFinal - prob*(math.log(prob, 2))
+        prob = countOne[i] / len(dataset)
+        clusterEntrophyFinal = clusterEntrophyFinal - prob * (math.log(prob, 2))
 
     # conditional entrophy of each class
     condClassEntrophy = 0
     for i in range(len(z[0])):
         listY = []
         m = 0
-        for j in z[:,i]:
+        for j in z[:, i]:
             if (j != 0):
                 listY.append(y[m])
-            m = m+1
+            m = m + 1
         outputY, countY = np.unique(listY, return_counts=True)
         total = np.sum(countY)
         outputYFinal = 0
-        for i in range(len(countY)):
-            prob = countY[i] / total
+        for b in range(len(countY)):
+            prob = countY[b] / total
             outputYFinal = outputYFinal + prob * (math.log(prob, 2))
-        condClassEntrophy = condClassEntrophy + (-1 * outputYFinal * (countOne[i]/len(dataset)))
+        condClassEntrophy = condClassEntrophy + (-1 * outputYFinal * (countOne[i] / len(dataset)))
 
     # cal mutual info
     mi = classEntrophyFinal - condClassEntrophy
-    nmi = (2 * mi)/(classEntrophyFinal - clusterEntrophyFinal)
+    nmi = (2 * mi) / (classEntrophyFinal - clusterEntrophyFinal)
     return nmi
 
 def evaluate_algorithm(dataset, maxK):
     X = dataset[:, 0:-1]
     centroidsList = []
-    meanKList = []
     varKList = []
+    piList = []
     for k in range(2, maxK+1):
         centroids = X[0:k, :]
         centroidsNew = np.zeros_like(centroids)
-        meanK = []
         varK = []
+        pi = []
         while True:
             z = calZ(X, centroids)
             countOne = np.count_nonzero(z, axis=0)
@@ -97,17 +96,50 @@ def evaluate_algorithm(dataset, maxK):
 
         # save centroids list for each k
         centroidsList.append(centroids)
-        # save mean k list for each k
+
+        # save var for each k
         z = calZ(X, centroids)
         countOne = np.count_nonzero(z, axis=0)
-        for i in range(len(countOne)):
-            meanK.append(countOne[i] / len(dataset))
-        meanKList.append(meanK)
+        for i in range(len(z[0])):
+            pi.append(countOne[i]/len(X))
+            var = 0
+            for n in range(len(X)):
+                var = var + z[n, i]*(np.dot(np.subtract(X[n], centroids[i]), np.subtract(X[n], centroids[i]).T))
+            var = var/countOne[i]
+            varK.append(var)
+        varKList.append(varK)
 
-    return centroidsList, meanKList, varKList
+        # save pi for each k
+        piList.append(pi)
 
-# def evaluate_algorithmGMM(dataset, k, centroids):
 
+    return centroidsList, varKList, piList
+
+def evaluate_algorithmGMM(dataset, maxK, centroidsListInit, varKListInit, piListInit):
+    X = dataset[:, 0:-1]
+    y = dataset[:, -1]
+    J = []
+    nmi = []
+    centroidsList = []
+    for k in range(2, maxK + 1):
+        centroids = centroidsListInit[k-2]
+        centroidsNew = np.zeros_like(centroids)
+        while True:
+            z = calZ(X, centroids)
+            countOne = np.count_nonzero(z, axis=0)
+            temp = np.matmul(z.T, X)
+            for i in range(len(centroidsNew)):
+                for j in range(len(centroidsNew[0])):
+                    centroidsNew[i, j] = temp[i, j] / countOne[i]
+            if (np.array_equal(centroids, centroidsNew)):
+                break;
+            centroids = centroidsNew
+        J.append(calJ(z, X, centroids))
+        nmi.append(calNMI(dataset, k, centroids))
+        centroidsList.append(centroids)
+    # print(J)
+    # print(nmi)
+    return J, nmi
 
 def main():
     maxK = 20
@@ -115,13 +147,12 @@ def main():
     dermatologyData = pd.read_csv('dermatologyData.csv', sep=',', header=None)
     dermatologyData.reindex(np.random.permutation(dermatologyData.index))
     # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
-    centroidsListDerm, meanKListDerm, varKListDerm = evaluate_algorithm(dermatologyData.values, maxK)
+    centroidsListDerm, varKListDerm, piListDerm = evaluate_algorithm(dermatologyData.values, maxK)
     # print("centroidsListDerm = ",centroidsListDerm)
-    print("meanKListDerm = ", meanKListDerm)
-    print("varKListDerm = ", varKListDerm)
+    # print("piListDerm = ", piListDerm)
+    # print("varKListDerm = ", varKListDerm)
 
-    # for k in range(2, maxK + 1):
-    #     evaluate_algorithmGMM(dermatologyData.values, k, centroidsListDerm[k-2])
+    evaluate_algorithmGMM(dermatologyData.values, maxK, centroidsListDerm, varKListDerm, piListDerm)
 
     # print("vowelsData: ")
     # vowelsData = pd.read_csv('vowelsData.csv', sep=',', header=None)

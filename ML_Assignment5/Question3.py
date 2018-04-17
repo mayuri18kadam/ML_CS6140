@@ -33,7 +33,6 @@ def calJ(z, X, centroids):
     return J
 
 def calNMI(dataset, k, centroids):
-    nmi = 0
     X = dataset[:, 0:-1]
     y = dataset[:, -1]
 
