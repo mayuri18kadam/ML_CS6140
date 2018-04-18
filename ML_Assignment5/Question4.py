@@ -10,6 +10,7 @@ import math
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
+from scipy.stats import multivariate_normal
 
 def calZ(X, centroids):
     z = np.zeros((len(X), len(centroids)))
@@ -95,7 +96,9 @@ def evaluate_algorithm(dataset, maxK):
             centroids = centroidsNew
 
         # save centroids list for each k
+        # print("centroids = ",centroids)
         centroidsList.append(centroids)
+        # print("centroidsList = ",centroidsList)
 
         # save var for each k
         z = calZ(X, centroids)
@@ -104,7 +107,7 @@ def evaluate_algorithm(dataset, maxK):
             pi.append(countOne[i]/len(X))
             var = 0
             for n in range(len(X)):
-                var = var + z[n, i]*(np.dot(np.subtract(X[n], centroids[i]), np.subtract(X[n], centroids[i]).T))
+                var = var + z[n, i]*(np.multiply(np.subtract(X[n], centroids[i]), np.subtract(X[n], centroids[i]).T))
             var = var/countOne[i]
             varK.append(var)
         varKList.append(varK)
@@ -115,27 +118,143 @@ def evaluate_algorithm(dataset, maxK):
 
     return centroidsList, varKList, piList
 
+def calNorm(X, mean, var):
+    norm = []
+    print("var = ",var)
+    den = math.sqrt(2 * math.pi) * var
+    for n in range(len(X)):
+        num = np.exp(-1*(np.sum(np.square(np.subtract(X[n], mean))))/(2*math.pow(var, 2)))
+        norm.append(num/den)
+    # print("norm = ",len(norm))
+    return norm
+
+def calGamma(X, pi, mean, var):
+    gamma = np.zeros((len(X), len(pi)))
+    for n in range(len(X)) :
+        prob = []
+        for k in range(len(pi)):
+            # print("var[k] = ",var[k])
+            tempVar = var[k]
+            norm = multivariate_normal.pdf(X, mean[k], tempVar)
+            # norm = calNorm(X, mean[k], var[k])
+            prob.append(pi[k] * norm[n])
+        den = np.sum(prob)
+        for k in range(len(pi)):
+            gamma[n, k] = prob[k] / den
+
+    z = np.zeros((len(X), len(pi)))
+    i = 0
+    for row in gamma:
+        max = np.argmax(row)
+        z[i, max] = 1
+        i = i + 1
+    return gamma, z
+
+def calMean(gamma, X, z):
+    countOne = np.count_nonzero(z, axis=0)
+    mean = []
+    for k in range(len(z[0])):
+        sum = 0
+        for n in range(len(X)):
+            sum = sum + gamma[n, k]*X[n]
+        # if (countOne[k] == 0) :
+        #     # sum = sum / 10000000
+        #     print("I am here...")
+        #     print("sum = ",sum)
+        #     sum = sum
+        # else :
+        sum = sum / countOne[k]
+        mean.append(sum)
+    # print("mean = ",mean)
+    return mean
+
+def calVar(gamma, X, mean, z):
+    # var = np.zeros(len(gamma[0]))
+    var = []
+    countOne = np.count_nonzero(z, axis=0)
+    for k in range(len(z[0])):
+        sum = np.zeros(len(X[0]))
+        # print("sum = ",len(sum))
+        for n in range(len(X)):
+            # sum = sum + gamma[n, k] * (np.multiply(np.subtract(X[n], mean[k]), np.subtract(X[n], mean[k]).T))
+            sum = np.sum((sum, gamma[n, k] * (np.multiply(np.subtract(X[n], mean[k]), np.subtract(X[n], mean[k]).T))), axis=0)
+        # if (countOne[k] == 0):
+        #     # sum = sum / 10000000
+        #     sum = sum
+        # else:
+        sum = sum / countOne[k]
+        # print("sum = ",sum)
+        var.append(sum)
+        # var[k] = sum
+    # print("var = ",var)
+    return var
+
+def calPi(gamma):
+    pi = []
+    for k in range(len(gamma[0])):
+        sum = 0
+        for n in range(len(gamma)):
+            sum = sum + gamma[n, k]
+        sum =sum/len(gamma)
+        pi.append(sum)
+    # print("pi = ",pi)
+    return pi
+
 def evaluate_algorithmGMM(dataset, maxK, centroidsListInit, varKListInit, piListInit):
     X = dataset[:, 0:-1]
     y = dataset[:, -1]
     J = []
     nmi = []
     centroidsList = []
+    # print("centroidsListInit = ",centroidsListInit)
     for k in range(2, maxK + 1):
         centroids = centroidsListInit[k-2]
-        centroidsNew = np.zeros_like(centroids)
+        # print("centroids = ",centroids)
+        z = calZ(X, centroids)
+        countO = np.count_nonzero(z, axis=0)
+        print("countO = ",countO)
+
+        # print("varKListInit[k - 2] = ",varKListInit[k - 2])
+        gamma, z = calGamma(X, piListInit[k - 2], centroids, varKListInit[k - 2])
+        countt = np.count_nonzero(z, axis=0)
+        # print("gamma = ",gamma)
+        print("countt = ", countt)
+        mean = calMean(gamma, X, z)
+        var = calVar(gamma, X, mean, z)
+        print("var = ",var)
+        pi = calPi(gamma)
+        stoppingCriteria = 0
+        stoppingCriteriaNew = 0
         while True:
-            z = calZ(X, centroids)
-            countOne = np.count_nonzero(z, axis=0)
-            temp = np.matmul(z.T, X)
-            for i in range(len(centroidsNew)):
-                for j in range(len(centroidsNew[0])):
-                    centroidsNew[i, j] = temp[i, j] / countOne[i]
-            if (np.array_equal(centroids, centroidsNew)):
+            gamma, z = calGamma(X, pi, mean, var)
+            counttwo = np.count_nonzero(z, axis=0)
+            # print("gamma = ",gamma)
+            print("counttwo = ",counttwo)
+            mean = calMean(gamma, X, z)
+            print("mean = ",mean)
+            var = calVar(gamma, X, mean, z)
+            print("var = ", var)
+            pi = calPi(gamma)
+            for p in range(len(X)):
+                temp = 0
+                for q in range(k):
+                    # print("mean[q] = ", mean[q])
+                    # print("var[q] = ", var[q])
+                    norm = multivariate_normal.pdf(X, mean[q], var[q])
+                    # norm = calNorm(X, mean[q], var[q])
+                    # print("norm = ",len(norm))
+                    # print("q = ",q)
+                    # print("p = ",p)
+                    temp = temp + pi[q]*norm[p]
+                # print("temp = ",temp)
+                stoppingCriteria = stoppingCriteria + math.log(temp, 2)
+            print("stoppingCriteria = ",stoppingCriteria)
+            print("***********************************************************")
+            if (stoppingCriteria == stoppingCriteriaNew or abs(stoppingCriteriaNew-stoppingCriteria)<=0.0001):
                 break;
-            centroids = centroidsNew
-        J.append(calJ(z, X, centroids))
-        nmi.append(calNMI(dataset, k, centroids))
+            stoppingCriteriaNew = stoppingCriteria
+        J.append(calJ(z, X, mean))
+        nmi.append(calNMI(dataset, k, mean))
         centroidsList.append(centroids)
     # print(J)
     # print(nmi)
@@ -148,11 +267,10 @@ def main():
     dermatologyData.reindex(np.random.permutation(dermatologyData.index))
     # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
     centroidsListDerm, varKListDerm, piListDerm = evaluate_algorithm(dermatologyData.values, maxK)
-    # print("centroidsListDerm = ",centroidsListDerm)
-    # print("piListDerm = ", piListDerm)
-    # print("varKListDerm = ", varKListDerm)
-
-    evaluate_algorithmGMM(dermatologyData.values, maxK, centroidsListDerm, varKListDerm, piListDerm)
+    # evaluate_algorithmGMM(dataset_as_ndarray, noOfClusters, centroidsList, varKList, piList)
+    J_derm, nmiDerm = evaluate_algorithmGMM(dermatologyData.values, maxK, centroidsListDerm, varKListDerm, piListDerm)
+    print("J_derm = ",J_derm)
+    print("nmiDerm = ", nmiDerm)
 
     # print("vowelsData: ")
     # vowelsData = pd.read_csv('vowelsData.csv', sep=',', header=None)
