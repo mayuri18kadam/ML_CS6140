@@ -149,19 +149,20 @@ def calGamma(X, pi, mean, var):
     return gamma, z
 
 def calMean(gamma, X, z):
-    countOne = np.count_nonzero(z, axis=0)
+    # countOne = np.count_nonzero(z, axis=0)
     mean = []
     for k in range(len(z[0])):
         sum = 0
         for n in range(len(X)):
             sum = sum + gamma[n, k]*X[n]
-        sum = sum / countOne[k]
+        # sum = sum / countOne[k]
+        sum = sum / np.sum((gamma[:,k]), axis=0)
         mean.append(sum)
     return mean
 
 def calVar(gamma, X, mean, z):
     var = []
-    countOne = np.count_nonzero(z, axis=0)
+    # countOne = np.count_nonzero(z, axis=0)
     for k in range(len(z[0])):
         # sum = np.zeros(len(X[0]))
         sum = np.zeros((34, 34))
@@ -169,7 +170,8 @@ def calVar(gamma, X, mean, z):
             sub = np.subtract(X[n], mean[k])
             test = np.outer(sub, sub)
             sum = sum + gamma[n, k] * test
-        sum = sum / countOne[k]
+        # sum = sum / countOne[k]
+            sum = sum / np.sum((gamma[:, k]), axis=0)
         var.append(sum)
     return var
 
@@ -193,7 +195,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
         centroids = centroidsListInit[k-2]
         gamma, z = calGamma(X, piListInit[k - 2], centroids, varKListInit[k - 2])
         count1 = np.count_nonzero(z, axis=0)
-        print("count1 = ",count1)
+        # print("count1 = ",count1)
         mean = calMean(gamma, X, z)
         var = calVar(gamma, X, mean, z)
         pi = calPi(gamma)
@@ -203,7 +205,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
         while iter<=maxIter:
             gamma, z = calGamma(X, pi, mean, var)
             count2 = np.count_nonzero(z, axis=0)
-            print("count2 = ", count2)
+            # print("count2 = ", count2)
             mean = calMean(gamma, X, z)
             var = calVar(gamma, X, mean, z)
             pi = calPi(gamma)
@@ -222,7 +224,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
         J.append(calJ(z, X, mean))
         nmi.append(calNMI(dataset, k, mean))
         centroidsList.append(centroids)
-        print("***********************************************************")
+        # print("***********************************************************")
     return J, nmi
 
 def main():
