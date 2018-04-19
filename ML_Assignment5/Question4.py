@@ -101,16 +101,16 @@ def evaluate_algorithm(dataset, maxK):
 
         # save var for each k
         z = calZ(X, centroids)
-        countOne = np.count_nonzero(z, axis=0)
+        cnt = np.count_nonzero(z, axis=0)
         for i in range(len(z[0])):
-            pi.append(countOne[i]/len(X))
+            pi.append(cnt[i]/len(X))
             var = np.zeros((34,34))
             for n in range(len(X)):
                 sub = np.subtract(X[n], centroids[i])
                 test = np.outer(sub, sub)
                 # var = var + z[n, i]*(np.multiply(np.subtract(X[n], centroids[i]), np.subtract(X[n], centroids[i]).T))
                 var = var + z[n, i] * test
-            var = var/countOne[i]
+            var = var/cnt[i]
             varK.append(var)
         # print("varK Kmeans = ",varK)
         varKList.append(varK)
@@ -134,10 +134,7 @@ def calGamma(X, pi, mean, var):
     for n in range(len(X)) :
         prob = []
         for k in range(len(pi)):
-            norm = multivariate_normal.pdf(X, mean[k], var[k])
-            # norm = multivariate_normal.pdf(X, mean[k], np.cov(X), allow_singular=True)
-            # norm = multivariate_normal.pdf(X, allow_singular=True)
-            # norm = calNorm(X, mean[k], var[k])
+            norm = multivariate_normal.pdf(X, mean[k], var[k], allow_singular=True)
             prob.append(pi[k] * norm[n])
         den = np.sum(prob)
         for k in range(len(pi)):
@@ -171,12 +168,9 @@ def calVar(gamma, X, mean, z):
         for n in range(len(X)):
             sub = np.subtract(X[n], mean[k])
             test = np.outer(sub, sub)
-            # sum = np.sum((sum, gamma[n, k] * (np.multiply(np.subtract(X[n], mean[k]).T, np.subtract(X[n], mean[k])))), axis=0)
-            # sum = np.sum((sum, gamma[n, k] * (np.outer(sub, sub))), axis=0)
             sum = sum + gamma[n, k] * test
         sum = sum / countOne[k]
         var.append(sum)
-    # print("var GMM = ",var)
     return var
 
 def calPi(gamma):
@@ -216,7 +210,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
             for p in range(len(X)):
                 temp = 0
                 for q in range(k):
-                    norm = multivariate_normal.pdf(X, mean[q], var[q])
+                    norm = multivariate_normal.pdf(X, mean[q], var[q], allow_singular=True)
                     # norm = calNorm(X, mean[q], var[q])
                     temp = temp + pi[q]*norm[p]
                 stoppingCriteria = stoppingCriteria + math.log(temp, 2)
@@ -232,7 +226,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
     return J, nmi
 
 def main():
-    maxK = 3
+    maxK = 10
     minK = 2
     print("dermatologyData: ")
     dermatologyData = pd.read_csv('dermatologyData.csv', sep=',', header=None)
