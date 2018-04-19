@@ -11,6 +11,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from scipy.stats import multivariate_normal
+from sklearn.cluster import KMeans
 
 def calZ(X, centroids):
     z = np.zeros((len(X), len(centroids)))
@@ -137,6 +138,7 @@ def calGamma(X, pi, mean, var):
             norm = multivariate_normal.pdf(X, mean[k], var[k], allow_singular=True)
             prob.append(pi[k] * norm[n])
         den = np.sum(prob)
+        # print("den = ", den)
         for k in range(len(pi)):
             gamma[n, k] = prob[k] / den
 
@@ -156,22 +158,25 @@ def calMean(gamma, X, z):
         for n in range(len(X)):
             sum = sum + gamma[n, k]*X[n]
         # sum = sum / countOne[k]
-        sum = sum / np.sum((gamma[:,k]), axis=0)
+
+        sum = sum / np.sum(gamma, axis=0)[k]
         mean.append(sum)
     return mean
 
 def calVar(gamma, X, mean, z):
     var = []
-    # countOne = np.count_nonzero(z, axis=0)
     for k in range(len(z[0])):
-        # sum = np.zeros(len(X[0]))
-        sum = np.zeros((34, 34))
+        # sum = np.zeros((len(z[0]), len(z[0])))
+        sum = 0
         for n in range(len(X)):
             sub = np.subtract(X[n], mean[k])
             test = np.outer(sub, sub)
+            # print("gamma[n, k] = ",gamma[n, k])
+            # print("test = ",len(test))
+            # print("test = ", len(test[0]))
             sum = sum + gamma[n, k] * test
-        # sum = sum / countOne[k]
-            sum = sum / np.sum((gamma[:, k]), axis=0)
+            # print("sum = ",sum)
+        sum = sum / np.sum(gamma, axis=0)[k]
         var.append(sum)
     return var
 
@@ -191,14 +196,25 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
     J = []
     nmi = []
     centroidsList = []
+
     for k in range(minK, maxK + 1):
-        centroids = centroidsListInit[k-2]
-        gamma, z = calGamma(X, piListInit[k - 2], centroids, varKListInit[k - 2])
-        count1 = np.count_nonzero(z, axis=0)
-        # print("count1 = ",count1)
+        kmean = KMeans(n_clusters=k, random_state=0).fit(X)
+        var = []
+        centroids = kmean.cluster_centers_
+        meanLabel = kmean.labels_
+        for clusterInx in range(k):
+            varCluster = np.zeros((len(X[0]), len(X[0])))
+            for n in range(len(X)):
+                if meanLabel[n] == clusterInx:
+                    sub = np.subtract(X[n], centroids[clusterInx])
+                    test = np.outer(sub, sub)
+                    varCluster = varCluster + test
+            var.append(varCluster)
+        gamma, z = calGamma(X, piListInit[k - 2], centroids, var)
         mean = calMean(gamma, X, z)
         var = calVar(gamma, X, mean, z)
         pi = calPi(gamma)
+
         stoppingCriteria = 0
         stoppingCriteriaNew = 0
         iter = 0
