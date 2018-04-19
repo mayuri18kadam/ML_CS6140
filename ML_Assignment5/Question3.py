@@ -70,7 +70,7 @@ def calNMI(dataset, k, centroids):
 
     # cal mutual info
     mi = classEntrophyFinal - condClassEntrophy
-    nmi = (2 * mi)/(classEntrophyFinal - clusterEntrophyFinal)
+    nmi = (2 * mi)/(classEntrophyFinal + clusterEntrophyFinal)
     return nmi
 
 def evaluate_algorithm(dataset, maxK):

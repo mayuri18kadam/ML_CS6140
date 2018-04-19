@@ -71,7 +71,7 @@ def calNMI(dataset, k, centroids):
 
     # cal mutual info
     mi = classEntrophyFinal - condClassEntrophy
-    nmi = (2 * mi) / (classEntrophyFinal - clusterEntrophyFinal)
+    nmi = (2 * mi) / (classEntrophyFinal + clusterEntrophyFinal)
     return nmi
 
 def evaluate_algorithm(dataset, maxK):
@@ -83,6 +83,7 @@ def evaluate_algorithm(dataset, maxK):
         centroids = X[0:k, :]
         centroidsNew = np.zeros_like(centroids)
         varK = []
+        # varK = np.zeros((34,34))
         pi = []
         while True:
             z = calZ(X, centroids)
@@ -103,24 +104,28 @@ def evaluate_algorithm(dataset, maxK):
         countOne = np.count_nonzero(z, axis=0)
         for i in range(len(z[0])):
             pi.append(countOne[i]/len(X))
-            var = 0
+            var = np.zeros((34,34))
             for n in range(len(X)):
-                var = var + z[n, i]*(np.multiply(np.subtract(X[n], centroids[i]), np.subtract(X[n], centroids[i]).T))
+                sub = np.subtract(X[n], centroids[i])
+                test = np.outer(sub, sub)
+                # var = var + z[n, i]*(np.multiply(np.subtract(X[n], centroids[i]), np.subtract(X[n], centroids[i]).T))
+                var = var + z[n, i] * test
             var = var/countOne[i]
             varK.append(var)
+        # print("varK Kmeans = ",varK)
         varKList.append(varK)
 
         # save pi for each k
         piList.append(pi)
-
-
+    # print("varKList = ",varKList)
     return centroidsList, varKList, piList
 
 def calNorm(X, mean, var):
     norm = []
-    den = math.sqrt(2 * math.pi) * var
+    den = math.sqrt(2 * math.pi) * np.linalg.det(var)
     for n in range(len(X)):
-        num = np.exp(-1*(np.sum(np.square(np.subtract(X[n], mean))))/(2*math.pow(var, 2)))
+        num = np.exp(-0.5 * np.dot(np.subtract(X[n], mean), np.dot(np.linalg.inv(var), np.subtract(X[n], mean).T).T))
+        # num = np.exp(-0.5*(np.sum(np.square(np.subtract(X[n], mean))))/(2*math.pow(var, 2)))
         norm.append(num/den)
     return norm
 
@@ -129,7 +134,9 @@ def calGamma(X, pi, mean, var):
     for n in range(len(X)) :
         prob = []
         for k in range(len(pi)):
-            norm = multivariate_normal.pdf(X, mean[k], var[k], allow_singular=True)
+            norm = multivariate_normal.pdf(X, mean[k], var[k])
+            # norm = multivariate_normal.pdf(X, mean[k], np.cov(X), allow_singular=True)
+            # norm = multivariate_normal.pdf(X, allow_singular=True)
             # norm = calNorm(X, mean[k], var[k])
             prob.append(pi[k] * norm[n])
         den = np.sum(prob)
@@ -159,11 +166,17 @@ def calVar(gamma, X, mean, z):
     var = []
     countOne = np.count_nonzero(z, axis=0)
     for k in range(len(z[0])):
-        sum = np.zeros(len(X[0]))
+        # sum = np.zeros(len(X[0]))
+        sum = np.zeros((34, 34))
         for n in range(len(X)):
-            sum = np.sum((sum, gamma[n, k] * (np.multiply(np.subtract(X[n], mean[k]), np.subtract(X[n], mean[k]).T))), axis=0)
+            sub = np.subtract(X[n], mean[k])
+            test = np.outer(sub, sub)
+            # sum = np.sum((sum, gamma[n, k] * (np.multiply(np.subtract(X[n], mean[k]).T, np.subtract(X[n], mean[k])))), axis=0)
+            # sum = np.sum((sum, gamma[n, k] * (np.outer(sub, sub))), axis=0)
+            sum = sum + gamma[n, k] * test
         sum = sum / countOne[k]
         var.append(sum)
+    # print("var GMM = ",var)
     return var
 
 def calPi(gamma):
@@ -203,11 +216,10 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
             for p in range(len(X)):
                 temp = 0
                 for q in range(k):
-                    norm = multivariate_normal.pdf(X, mean[q], var[q], allow_singular=True)
+                    norm = multivariate_normal.pdf(X, mean[q], var[q])
                     # norm = calNorm(X, mean[q], var[q])
                     temp = temp + pi[q]*norm[p]
                 stoppingCriteria = stoppingCriteria + math.log(temp, 2)
-            # print("stoppingCriteria = ",stoppingCriteria)
             if (stoppingCriteria == stoppingCriteriaNew or abs(stoppingCriteriaNew-stoppingCriteria)<=tol):
                 break;
             stoppingCriteriaNew = stoppingCriteria
@@ -217,12 +229,10 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
         nmi.append(calNMI(dataset, k, mean))
         centroidsList.append(centroids)
         print("***********************************************************")
-    # print(J)
-    # print(nmi)
     return J, nmi
 
 def main():
-    maxK = 10
+    maxK = 3
     minK = 2
     print("dermatologyData: ")
     dermatologyData = pd.read_csv('dermatologyData.csv', sep=',', header=None)
