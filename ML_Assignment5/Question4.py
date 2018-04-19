@@ -176,15 +176,17 @@ def calPi(gamma):
         pi.append(sum)
     return pi
 
-def evaluate_algorithmGMM(dataset, maxK, centroidsListInit, varKListInit, piListInit, tol, maxIter):
+def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, piListInit, tol, maxIter):
     X = dataset[:, 0:-1]
     y = dataset[:, -1]
     J = []
     nmi = []
     centroidsList = []
-    for k in range(2, maxK + 1):
+    for k in range(minK, maxK + 1):
         centroids = centroidsListInit[k-2]
         gamma, z = calGamma(X, piListInit[k - 2], centroids, varKListInit[k - 2])
+        count1 = np.count_nonzero(z, axis=0)
+        print("count1 = ",count1)
         mean = calMean(gamma, X, z)
         var = calVar(gamma, X, mean, z)
         pi = calPi(gamma)
@@ -193,6 +195,8 @@ def evaluate_algorithmGMM(dataset, maxK, centroidsListInit, varKListInit, piList
         iter = 0
         while iter<=maxIter:
             gamma, z = calGamma(X, pi, mean, var)
+            count2 = np.count_nonzero(z, axis=0)
+            print("count2 = ", count2)
             mean = calMean(gamma, X, z)
             var = calVar(gamma, X, mean, z)
             pi = calPi(gamma)
@@ -203,7 +207,7 @@ def evaluate_algorithmGMM(dataset, maxK, centroidsListInit, varKListInit, piList
                     # norm = calNorm(X, mean[q], var[q])
                     temp = temp + pi[q]*norm[p]
                 stoppingCriteria = stoppingCriteria + math.log(temp, 2)
-            print("stoppingCriteria = ",stoppingCriteria)
+            # print("stoppingCriteria = ",stoppingCriteria)
             if (stoppingCriteria == stoppingCriteriaNew or abs(stoppingCriteriaNew-stoppingCriteria)<=tol):
                 break;
             stoppingCriteriaNew = stoppingCriteria
@@ -218,14 +222,16 @@ def evaluate_algorithmGMM(dataset, maxK, centroidsListInit, varKListInit, piList
     return J, nmi
 
 def main():
-    maxK = 20
+    maxK = 10
+    minK = 2
     print("dermatologyData: ")
     dermatologyData = pd.read_csv('dermatologyData.csv', sep=',', header=None)
     dermatologyData.reindex(np.random.permutation(dermatologyData.index))
     # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
     centroidsListDerm, varKListDerm, piListDerm = evaluate_algorithm(dermatologyData.values, maxK)
     # evaluate_algorithmGMM(dataset_as_ndarray, noOfClusters, centroidsList, varKList, piList, tolerance, maxIter)
-    J_derm, nmiDerm = evaluate_algorithmGMM(dermatologyData.values, maxK, centroidsListDerm, varKListDerm, piListDerm, 1, 1000)
+    J_derm, nmiDerm = evaluate_algorithmGMM(dermatologyData.values, minK, maxK, centroidsListDerm,
+                                            varKListDerm, piListDerm, 1000, 300)
     print("J_derm = ",J_derm)
     print("nmiDerm = ", nmiDerm)
 
