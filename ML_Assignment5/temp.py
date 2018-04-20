@@ -12,59 +12,6 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from scipy.stats import multivariate_normal
 from sklearn.cluster import KMeans
-import threading
-import time
-
-sse = []
-nmi = []
-exitFlag = 0
-threadLock = threading.Lock()
-threads = []
-
-class myThread (threading.Thread):
-    def __init__(self, threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount, title):
-       threading.Thread.__init__(self)
-       self.threadID = threadID
-       self.counter = counter
-       self.dataset = dataset
-       self.minK = minK
-       self.maxK = maxK
-       self.maxIter = maxIter
-       self.tol = tol
-       self.labelCount = labelCount
-       self.res = 0
-       self.title = title
-    def run(self):
-        sse1, nmi1 = evaluate_algorithmGMM(self.dataset, self.minK, self.maxK, self.maxIter, self.tol,
-                                           self.threadID, self.counter)
-        threadLock.acquire()
-        sse.append(sse1)
-        nmi.append(nmi1)
-        self.res = np.argmax(nmi1)
-        print("optimal k = ", self.res+2)
-        print("best NMI = ", nmi1[self.res])
-        print("optimal SSE = ", sse1[self.res])
-        print("On setting the number of clusters equal to the number of classes:")
-        print("k = ",self.labelCount)
-        print("NMI = ", nmi1[self.labelCount+2])
-        print("SSE= ", sse1[self.labelCount+2])
-        print("")
-
-        fig1 = plt.figure()
-        ax1 = fig1.add_subplot(121)
-        ax1.set_title(self.title)
-        ax1.set_xlabel('Number of clusters')
-        ax1.set_ylabel('Objective function / SSE')
-        ax1.plot(np.arange(1, 20, 1), sse1, ls='--', marker='o', c='y', label='SSE')
-
-        ax2 = fig1.add_subplot(122)
-        ax2.set_title(self.title)
-        ax2.set_xlabel('Number of clusters')
-        ax2.set_ylabel('NMI')
-        ax2.plot(np.arange(1, 20, 1), nmi1, ls='--', marker='v', c='m', label='NMI')
-
-        plt.show()
-        threadLock.release()
 
 def calGamma(X, pi, mean, var):
     gamma = np.zeros((len(X), len(pi)))
@@ -147,7 +94,8 @@ def calNMI(dataset, k, centroids):
     classEntrophyFinal = 0
     for i in range(len(count)):
         prob = count[i]/len(dataset)
-        classEntrophyFinal = classEntrophyFinal - prob*(math.log(prob, 2))
+        if prob > 0:
+            classEntrophyFinal = classEntrophyFinal - prob*(math.log(prob, 2))
 
     # cal cluster entrophy
     z = calZ(X, centroids)
@@ -155,7 +103,8 @@ def calNMI(dataset, k, centroids):
     clusterEntrophyFinal = 0
     for i in range(len(countOne)):
         prob = countOne[i]/len(dataset)
-        clusterEntrophyFinal = clusterEntrophyFinal - prob*(math.log(prob, 2))
+        if prob > 0:
+            clusterEntrophyFinal = clusterEntrophyFinal - prob*(math.log(prob, 2))
 
     # conditional entrophy of each class
     condClassEntrophy = 0
@@ -171,7 +120,8 @@ def calNMI(dataset, k, centroids):
         outputYFinal = 0
         for b in range(len(countY)):
             prob = countY[b] / total
-            outputYFinal = outputYFinal + prob * (math.log(prob, 2))
+            if prob > 0:
+                outputYFinal = outputYFinal + prob * (math.log(prob, 2))
         condClassEntrophy = condClassEntrophy + (-1 * outputYFinal * (countOne[i]/len(dataset)))
 
     # cal mutual info
@@ -179,11 +129,7 @@ def calNMI(dataset, k, centroids):
     nmi = (2 * mi)/(classEntrophyFinal + clusterEntrophyFinal)
     return nmi
 
-def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter, threadID, counter):
-    for i in range(counter):
-        if exitFlag:
-            threadID.exit()
-        time.sleep(i)
+def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter):
 
     X = dataset[:, 0:-1]
     J = []
@@ -191,6 +137,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter, threadID, counter):
     centroidsList = []
 
     for k in range(minK, maxK + 1):
+        print("k = ",k)
         kmean = KMeans(n_clusters=k, random_state=0).fit(X)
         var = []
         centroids = kmean.cluster_centers_
@@ -234,7 +181,9 @@ def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter, threadID, counter):
             stoppingCriteriaNew = stoppingCriteria
             iter = iter + 1
 
+        print("calJ(z, X, mean) = ",calJ(z, X, mean))
         J.append(calJ(z, X, mean))
+        print("calNMI(dataset, k, mean) = ",calNMI(dataset, k, mean))
         nmi.append(calNMI(dataset, k, mean))
         centroidsList.append(centroids)
     return J, nmi
@@ -244,60 +193,96 @@ def main():
     print("dermatologyData: ")
     dermatologyData = pd.read_csv('dermatologyData.csv', sep=',', header=None)
     dermatologyData.reindex(np.random.permutation(dermatologyData.index))
+    minK = 2
+    maxK = 10
+    tol = 500
+    maxIter = 500
+    labelCount = 7
+    title = "dermatologyData"
     # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    thread1 = myThread(1, 1, dermatologyData.values, 2, 20, 1000, 300, 7, "dermatologyData")
-    thread1.start()
-    threads.append(thread1)
+    # thread1 = myThread(1, 1, dermatologyData.values, 2, 10, 500, 500, 7, "dermatologyData")
+    # thread1.start()
+    # threads.append(thread1)
+    # print("")
+
+    # print("vowelsData: ")
+    # vowelsData = pd.read_csv('vowelsData.csv', sep=',', header=None)
+    # vowelsData.reindex(np.random.permutation(vowelsData.index))
+    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    # thread2 = myThread(2, 2, vowelsData.values, 2, 20, 1000, 300, 11, "vowelsData")
+    # thread2.start()
+    # threads.append(thread2)
+    # print("")
+    #
+    # print("glassData: ")
+    # glassData = pd.read_csv('glassData.csv', sep=',', header=None)
+    # glassData.reindex(np.random.permutation(glassData.index))
+    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    # thread3 = myThread(3, 3, glassData.values, 2, 20, 1000, 300, 6, "glassData")
+    # thread3.start()
+    # threads.append(thread3)
+    # print("")
+    #
+    # print("ecoliData: ")
+    # ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
+    # ecoliData.reindex(np.random.permutation(ecoliData.index))
+    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    # thread4 = myThread(4, 4, ecoliData.values, 2, 20, 1000, 300, 5, "ecoliData")
+    # thread4.start()
+    # threads.append(thread4)
+    # print("")
+    #
+    # print("yeastData: ")
+    # yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
+    # yeastData.reindex(np.random.permutation(yeastData.index))
+    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    # thread5 = myThread(5, 5, yeastData.values, 2, 20, 1000, 300, 9, "yeastData")
+    # thread5.start()
+    # threads.append(thread5)
+    # print("")
+    #
+    # print("soybeanData: ")
+    # soybeanData = pd.read_csv('soybeanData.csv', sep=',', header=None)
+    # soybeanData.reindex(np.random.permutation(soybeanData.index))
+    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    # thread6 = myThread(6, 6, soybeanData.values, 2, 20, 1000, 300, 15, "soybeanData")
+    # thread6.start()
+    # threads.append(thread6)
+    # print("")
+
+    # for t in threads:
+    #     t.join()
+    # print("Exiting Main Thread")
+
+    sse1, nmi1 = evaluate_algorithmGMM(dermatologyData.values, minK, maxK, tol, maxIter)
+    print("sse = ", sse1)
+    print("nmi = ", nmi1)
+    # sse.append(sse1)
+    # nmi.append(nmi1)
+    res = np.argmax(nmi1)
+    print("optimal k = ", res + 2)
+    print("best NMI = ", nmi1[res])
+    print("optimal SSE = ", sse1[res])
+    print("On setting the number of clusters equal to the number of classes:")
+    print("k = ", labelCount)
+    print("NMI = ", nmi1[labelCount-2])
+    print("SSE = ", sse1[labelCount-2])
     print("")
 
-    print("vowelsData: ")
-    vowelsData = pd.read_csv('vowelsData.csv', sep=',', header=None)
-    vowelsData.reindex(np.random.permutation(vowelsData.index))
-    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    thread2 = myThread(2, 2, vowelsData.values, 2, 20, 1000, 300, 11, "vowelsData")
-    thread2.start()
-    threads.append(thread2)
-    print("")
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(121)
+    ax1.set_title(title)
+    ax1.set_xlabel('Number of clusters')
+    ax1.set_ylabel('Objective function / SSE')
+    ax1.plot(np.arange(minK, maxK+1, 1), sse1, ls='--', marker='o', c='y', label='SSE')
 
-    print("glassData: ")
-    glassData = pd.read_csv('glassData.csv', sep=',', header=None)
-    glassData.reindex(np.random.permutation(glassData.index))
-    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    thread3 = myThread(3, 3, glassData.values, 2, 20, 1000, 300, 6, "glassData")
-    thread3.start()
-    threads.append(thread3)
-    print("")
+    ax2 = fig1.add_subplot(122)
+    ax2.set_title(title)
+    ax2.set_xlabel('Number of clusters')
+    ax2.set_ylabel('NMI')
+    ax2.plot(np.arange(minK, maxK+1, 1), nmi1, ls='--', marker='v', c='m', label='NMI')
 
-    print("ecoliData: ")
-    ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
-    ecoliData.reindex(np.random.permutation(ecoliData.index))
-    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    thread4 = myThread(4, 4, ecoliData.values, 2, 20, 1000, 300, 5, "ecoliData")
-    thread4.start()
-    threads.append(thread4)
-    print("")
-
-    print("yeastData: ")
-    yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
-    yeastData.reindex(np.random.permutation(yeastData.index))
-    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    thread5 = myThread(5, 5, yeastData.values, 2, 20, 1000, 300, 9, "yeastData")
-    thread5.start()
-    threads.append(thread5)
-    print("")
-
-    print("soybeanData: ")
-    soybeanData = pd.read_csv('soybeanData.csv', sep=',', header=None)
-    soybeanData.reindex(np.random.permutation(soybeanData.index))
-    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    thread6 = myThread(6, 6, soybeanData.values, 2, 20, 1000, 300, 15, "soybeanData")
-    thread6.start()
-    threads.append(thread6)
-    print("")
-
-    for t in threads:
-        t.join()
-    print("Exiting Main Thread")
+    plt.show()
 
 
 if __name__ == "__main__": main()
