@@ -15,31 +15,21 @@ from sklearn.cluster import KMeans
 
 def calGamma(X, pi, mean, var):
     gamma = np.zeros((len(X), len(pi)))
-    for n in range(len(X)) :
-        prob = []
-        for k in range(len(pi)):
-            norm = multivariate_normal.pdf(X[n], mean[k], var[k], allow_singular=True)
-            prob.append(pi[k] * norm)
-        den = np.sum(prob)
-        for k in range(len(pi)):
-            gamma[n, k] = prob[k] / den
-
     z = np.zeros((len(X), len(pi)))
-    i = 0
-    for row in gamma:
-        max = np.argmax(row)
-        z[i, max] = 1
-        i = i + 1
+    for k in range(len(pi)):
+        gamma[:,k] = pi[k] * multivariate_normal.pdf(X, mean[k], var[k], allow_singular=True)
+    den = np.sum(gamma, axis=1)
+    for n in range(len(X)) :
+        gamma[n] = gamma[n]/den[n]
+        max = np.argmax(gamma[n])
+        z[n, max] = 1
     return gamma, z
 
-def calMean(gamma, X, z):
-    mean = []
-    for k in range(len(z[0])):
-        sum = 0
-        for n in range(len(X)):
-            sum = sum + gamma[n, k]*X[n]
-        sum = sum / np.sum(gamma, axis=0)[k]
-        mean.append(sum)
+def calMean(gamma, X):
+    mean = np.zeros(len(gamma[0]))
+    den = np.sum(gamma, axis=0)
+    for k in range(len(gamma[0])):
+        mean[k] = np.sum(np.dot(gamma[:,k], X), axis=0)/den[k]
     return mean
 
 def calVar(gamma, X, mean, z):
@@ -47,45 +37,21 @@ def calVar(gamma, X, mean, z):
     for k in range(len(z[0])):
         sum = 0
         for n in range(len(X)):
-            sub = np.subtract(X[n], mean[k])
-            test = np.outer(sub, sub)
-            sum = sum + gamma[n, k] * test
+            sum = sum + gamma[n, k] * np.outer(np.subtract(X[n], mean[k]), np.subtract(X[n], mean[k]))
         sum = sum / np.sum(gamma, axis=0)[k]
         var.append(sum)
     return var
 
 def calPi(gamma):
-    pi = []
-    for k in range(len(gamma[0])):
-        sum = 0
-        for n in range(len(gamma)):
-            sum = sum + gamma[n, k]
-        sum = sum/len(gamma)
-        pi.append(sum)
-    return pi
-
-def calZ(X, centroids):
-    z = np.zeros((len(X), len(centroids)))
-    distance = cdist(X, centroids, 'euclidean')
-    i=0
-    for row in distance:
-        min = np.argmin(row)
-        z[i, min] = 1
-        i = i + 1
-    return z
+    return np.sum(gamma, axis=0)/len(gamma)
 
 def calJ(z, X, centroids):
-    J = 0
-    p = 0
-    for n in X:
-        q = 0
-        for k in centroids:
-            J = J + z[p,q]*(np.sum(np.square(np.subtract(n, k))))
-            q = q + 1
-        p = p + 1
-    return J
+    sse = 0
+    for k in centroids:
+        sse = sse + z[:,k]*np.sum(np.square(np.subtract(X, k)))
+    return np.sum(sse)
 
-def calNMI(dataset, k, centroids):
+def calNMI(dataset, z):
     X = dataset[:, 0:-1]
     y = dataset[:, -1]
 
@@ -98,7 +64,6 @@ def calNMI(dataset, k, centroids):
             classEntrophyFinal = classEntrophyFinal - prob*(math.log(prob, 2))
 
     # cal cluster entrophy
-    z = calZ(X, centroids)
     countOne = np.count_nonzero(z, axis=0)
     clusterEntrophyFinal = 0
     for i in range(len(countOne)):
@@ -130,12 +95,9 @@ def calNMI(dataset, k, centroids):
     return nmi
 
 def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter):
-
     X = dataset[:, 0:-1]
     J = []
     nmi = []
-    centroidsList = []
-
     for k in range(minK, maxK + 1):
         print("k = ",k)
         kmean = KMeans(n_clusters=k, random_state=0).fit(X)
@@ -151,14 +113,19 @@ def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter):
                     varCluster = varCluster + test
             var.append(varCluster)
 
-        z = calZ(X, centroids)
+        z = np.zeros((len(X), len(centroids)))
+        distance = cdist(X, centroids, 'euclidean')
+        i=0
+        for row in distance:
+            min = np.argmin(row)
+            z[i, min] = 1
+            i = i + 1
+
         countOne = np.count_nonzero(z, axis=0)
-        pi = []
-        for i in range(len(countOne)):
-            pi.append(countOne[i] / len(dataset))
+        pi = countOne/len(dataset)
 
         gamma, z = calGamma(X, pi, centroids, var)
-        mean = calMean(gamma, X, z)
+        mean = calMean(gamma, X)
         var = calVar(gamma, X, mean, z)
         pi = calPi(gamma)
 
@@ -167,7 +134,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter):
         iter = 0
         while iter<=maxIter:
             gamma, z = calGamma(X, pi, mean, var)
-            mean = calMean(gamma, X, z)
+            mean = calMean(gamma, X)
             var = calVar(gamma, X, mean, z)
             pi = calPi(gamma)
             for p in range(len(X)):
@@ -183,9 +150,8 @@ def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter):
 
         print("calJ(z, X, mean) = ",calJ(z, X, mean))
         J.append(calJ(z, X, mean))
-        print("calNMI(dataset, k, mean) = ",calNMI(dataset, k, mean))
-        nmi.append(calNMI(dataset, k, mean))
-        centroidsList.append(centroids)
+        print("calNMI(dataset, k, mean) = ",calNMI(dataset, z))
+        nmi.append(calNMI(dataset, z))
     return J, nmi
 
 def main():
@@ -210,32 +176,26 @@ def main():
     # labelCount = 11
     # title = "vowelsData"
 
-    # print("glassData: ")
-    # glassData = pd.read_csv('glassData.csv', sep=',', header=None)
-    # glassData.reindex(np.random.permutation(glassData.index))
-    # minK = 2
-    # maxK = 10
-    # tol = 500
-    # maxIter = 500
-    # labelCount = 6
-    # title = "glassData"
-
-    print("ecoliData: ")
-    ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
-    ecoliData.reindex(np.random.permutation(ecoliData.index))
+    print("glassData: ")
+    glassData = pd.read_csv('glassData.csv', sep=',', header=None)
+    glassData.reindex(np.random.permutation(glassData.index))
     minK = 2
     maxK = 10
     tol = 500
     maxIter = 500
-    labelCount = 5
-    title = "ecoliData"
+    labelCount = 6
+    title = "glassData"
 
-    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    # thread4 = myThread(4, 4, ecoliData.values, 2, 20, 1000, 300, 5, "ecoliData")
-    # thread4.start()
-    # threads.append(thread4)
-    # print("")
-    #
+    # print("ecoliData: ")
+    # ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
+    # ecoliData.reindex(np.random.permutation(ecoliData.index))
+    # minK = 2
+    # maxK = 10
+    # tol = 500
+    # maxIter = 500
+    # labelCount = 5
+    # title = "ecoliData"
+
     # print("yeastData: ")
     # yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
     # yeastData.reindex(np.random.permutation(yeastData.index))
@@ -254,21 +214,17 @@ def main():
     # threads.append(thread6)
     # print("")
 
-    # for t in threads:
-    #     t.join()
-    # print("Exiting Main Thread")
-
-    sse1, nmi1 = evaluate_algorithmGMM(ecoliData.values, minK, maxK, tol, maxIter)
+    sse1, nmi1 = evaluate_algorithmGMM(glassData.values, minK, maxK, tol, maxIter)
     print("sse = ", sse1)
     print("nmi = ", nmi1)
     res = np.argmax(nmi1)
-    print("optimal k = ", res + 2)
+    print("optimal k = ", res + minK)
     print("best NMI = ", nmi1[res])
     print("optimal SSE = ", sse1[res])
     print("On setting the number of clusters equal to the number of classes:")
     print("k = ", labelCount)
-    print("NMI = ", nmi1[labelCount-2])
-    print("SSE = ", sse1[labelCount-2])
+    print("NMI = ", nmi1[labelCount-minK])
+    print("SSE = ", sse1[labelCount-minK])
     print("")
 
     fig1 = plt.figure()
