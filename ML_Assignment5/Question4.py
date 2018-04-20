@@ -12,6 +12,110 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from scipy.stats import multivariate_normal
 from sklearn.cluster import KMeans
+import threading
+import time
+
+sse = []
+nmi = []
+exitFlag = 0
+threadLock = threading.Lock()
+threads = []
+
+class myThread (threading.Thread):
+    def __init__(self, threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount, title):
+       threading.Thread.__init__(self)
+       self.threadID = threadID
+       self.counter = counter
+       self.dataset = dataset
+       self.minK = minK
+       self.maxK = maxK
+       self.maxIter = maxIter
+       self.tol = tol
+       self.labelCount = labelCount
+       self.res = 0
+       self.title = title
+    def run(self):
+        sse1, nmi1 = evaluate_algorithmGMM(self.dataset, self.minK, self.maxK, self.maxIter, self.tol,
+                                           self.threadID, self.counter)
+        threadLock.acquire()
+        sse.append(sse1)
+        nmi.append(nmi1)
+        self.res = np.argmax(nmi1)
+        print("optimal k = ", self.res+2)
+        print("best NMI = ", nmi1[self.res])
+        print("optimal SSE = ", sse1[self.res])
+        print("On setting the number of clusters equal to the number of classes:")
+        print("k = ",self.labelCount)
+        print("NMI = ", nmi1[self.labelCount+2])
+        print("SSE= ", sse1[self.labelCount+2])
+        print("")
+
+        fig1 = plt.figure()
+        ax1 = fig1.add_subplot(121)
+        ax1.set_title(self.title)
+        ax1.set_xlabel('Number of clusters')
+        ax1.set_ylabel('Objective function / SSE')
+        ax1.plot(np.arange(1, 20, 1), sse1, ls='--', marker='o', c='y', label='SSE')
+
+        ax2 = fig1.add_subplot(122)
+        ax2.set_title(self.title)
+        ax2.set_xlabel('Number of clusters')
+        ax2.set_ylabel('NMI')
+        ax2.plot(np.arange(1, 20, 1), nmi1, ls='--', marker='v', c='m', label='NMI')
+
+        plt.show()
+        threadLock.release()
+
+def calGamma(X, pi, mean, var):
+    gamma = np.zeros((len(X), len(pi)))
+    for n in range(len(X)) :
+        prob = []
+        for k in range(len(pi)):
+            norm = multivariate_normal.pdf(X[n], mean[k], var[k], allow_singular=True)
+            prob.append(pi[k] * norm)
+        den = np.sum(prob)
+        for k in range(len(pi)):
+            gamma[n, k] = prob[k] / den
+
+    z = np.zeros((len(X), len(pi)))
+    i = 0
+    for row in gamma:
+        max = np.argmax(row)
+        z[i, max] = 1
+        i = i + 1
+    return gamma, z
+
+def calMean(gamma, X, z):
+    mean = []
+    for k in range(len(z[0])):
+        sum = 0
+        for n in range(len(X)):
+            sum = sum + gamma[n, k]*X[n]
+        sum = sum / np.sum(gamma, axis=0)[k]
+        mean.append(sum)
+    return mean
+
+def calVar(gamma, X, mean, z):
+    var = []
+    for k in range(len(z[0])):
+        sum = 0
+        for n in range(len(X)):
+            sub = np.subtract(X[n], mean[k])
+            test = np.outer(sub, sub)
+            sum = sum + gamma[n, k] * test
+        sum = sum / np.sum(gamma, axis=0)[k]
+        var.append(sum)
+    return var
+
+def calPi(gamma):
+    pi = []
+    for k in range(len(gamma[0])):
+        sum = 0
+        for n in range(len(gamma)):
+            sum = sum + gamma[n, k]
+        sum = sum/len(gamma)
+        pi.append(sum)
+    return pi
 
 def calZ(X, centroids):
     z = np.zeros((len(X), len(centroids)))
@@ -39,26 +143,26 @@ def calNMI(dataset, k, centroids):
     y = dataset[:, -1]
 
     # cal class entrophy
-    outputCategory, count = np.unique(dataset[:, -1], return_counts=True)
+    outputCategory, count = np.unique(dataset[:,-1], return_counts=True)
     classEntrophyFinal = 0
     for i in range(len(count)):
-        prob = count[i] / len(dataset)
-        classEntrophyFinal = classEntrophyFinal - prob * (math.log(prob, 2))
+        prob = count[i]/len(dataset)
+        classEntrophyFinal = classEntrophyFinal - prob*(math.log(prob, 2))
 
     # cal cluster entrophy
     z = calZ(X, centroids)
     countOne = np.count_nonzero(z, axis=0)
     clusterEntrophyFinal = 0
     for i in range(len(countOne)):
-        prob = countOne[i] / len(dataset)
-        clusterEntrophyFinal = clusterEntrophyFinal - prob * (math.log(prob, 2))
+        prob = countOne[i]/len(dataset)
+        clusterEntrophyFinal = clusterEntrophyFinal - prob*(math.log(prob, 2))
 
     # conditional entrophy of each class
     condClassEntrophy = 0
     for i in range(len(z[0])):
         listY = []
         m = 0
-        for j in z[:, i]:
+        for j in z[:,i]:
             if (j != 0):
                 listY.append(y[m])
             m = m + 1
@@ -68,137 +172,25 @@ def calNMI(dataset, k, centroids):
         for b in range(len(countY)):
             prob = countY[b] / total
             outputYFinal = outputYFinal + prob * (math.log(prob, 2))
-        condClassEntrophy = condClassEntrophy + (-1 * outputYFinal * (countOne[i] / len(dataset)))
+        condClassEntrophy = condClassEntrophy + (-1 * outputYFinal * (countOne[i]/len(dataset)))
 
     # cal mutual info
     mi = classEntrophyFinal - condClassEntrophy
-    nmi = (2 * mi) / (classEntrophyFinal + clusterEntrophyFinal)
+    nmi = (2 * mi)/(classEntrophyFinal + clusterEntrophyFinal)
     return nmi
 
-def evaluate_algorithm(dataset, maxK):
+def evaluate_algorithmGMM(dataset, minK, maxK, tol, maxIter, threadID, counter):
+    for i in range(counter):
+        if exitFlag:
+            threadID.exit()
+        time.sleep(i)
+
     X = dataset[:, 0:-1]
-    centroidsList = []
-    varKList = []
-    piList = []
-    for k in range(2, maxK+1):
-        centroids = X[0:k, :]
-        centroidsNew = np.zeros_like(centroids)
-        varK = []
-        # varK = np.zeros((34,34))
-        pi = []
-        while True:
-            z = calZ(X, centroids)
-            countOne = np.count_nonzero(z, axis=0)
-            temp = np.matmul(z.T, X)
-            for i in range(len(centroidsNew)):
-                for j in range(len(centroidsNew[0])):
-                    centroidsNew[i,j] = temp[i,j] / countOne[i]
-            if (np.array_equal(centroids, centroidsNew)):
-                break;
-            centroids = centroidsNew
-
-        # save centroids list for each k
-        centroidsList.append(centroids)
-
-        # save var for each k
-        z = calZ(X, centroids)
-        cnt = np.count_nonzero(z, axis=0)
-        for i in range(len(z[0])):
-            pi.append(cnt[i]/len(X))
-            var = np.zeros((34,34))
-            for n in range(len(X)):
-                sub = np.subtract(X[n], centroids[i])
-                test = np.outer(sub, sub)
-                # var = var + z[n, i]*(np.multiply(np.subtract(X[n], centroids[i]), np.subtract(X[n], centroids[i]).T))
-                var = var + z[n, i] * test
-            var = var/cnt[i]
-            varK.append(var)
-        # print("varK Kmeans = ",varK)
-        varKList.append(varK)
-
-        # save pi for each k
-        piList.append(pi)
-    # print("varKList = ",varKList)
-    return centroidsList, varKList, piList
-
-def calNorm(X, mean, var):
-    norm = []
-    den = math.sqrt(2 * math.pi) * np.linalg.det(var)
-    for n in range(len(X)):
-        num = np.exp(-0.5 * np.dot(np.subtract(X[n], mean), np.dot(np.linalg.inv(var), np.subtract(X[n], mean).T).T))
-        # num = np.exp(-0.5*(np.sum(np.square(np.subtract(X[n], mean))))/(2*math.pow(var, 2)))
-        norm.append(num/den)
-    return norm
-
-def calGamma(X, pi, mean, var):
-    gamma = np.zeros((len(X), len(pi)))
-    for n in range(len(X)) :
-        prob = []
-        for k in range(len(pi)):
-            norm = multivariate_normal.pdf(X[n], mean[k], var[k], allow_singular=True)
-            prob.append(pi[k] * norm)
-        den = np.sum(prob)
-        # print("den = ", den)
-        for k in range(len(pi)):
-            gamma[n, k] = prob[k] / den
-
-    z = np.zeros((len(X), len(pi)))
-    i = 0
-    for row in gamma:
-        max = np.argmax(row)
-        z[i, max] = 1
-        i = i + 1
-    return gamma, z
-
-def calMean(gamma, X, z):
-    # countOne = np.count_nonzero(z, axis=0)
-    mean = []
-    for k in range(len(z[0])):
-        sum = 0
-        for n in range(len(X)):
-            sum = sum + gamma[n, k]*X[n]
-        # sum = sum / countOne[k]
-
-        sum = sum / np.sum(gamma, axis=0)[k]
-        mean.append(sum)
-    return mean
-
-def calVar(gamma, X, mean, z):
-    var = []
-    for k in range(len(z[0])):
-        # sum = np.zeros((len(z[0]), len(z[0])))
-        sum = 0
-        for n in range(len(X)):
-            sub = np.subtract(X[n], mean[k])
-            test = np.outer(sub, sub)
-            # print("gamma[n, k] = ",gamma[n, k])
-            # print("test = ",len(test))
-            # print("test = ", len(test[0]))
-            sum = sum + gamma[n, k] * test
-            # print("sum = ",sum)
-        sum = sum / np.sum(gamma, axis=0)[k]
-        var.append(sum)
-    return var
-
-def calPi(gamma):
-    pi = []
-    for k in range(len(gamma[0])):
-        sum = 0
-        for n in range(len(gamma)):
-            sum = sum + gamma[n, k]
-        sum =sum/len(gamma)
-        pi.append(sum)
-    return pi
-
-def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, piListInit, tol, maxIter):
-    X = dataset[:, 0:-1]
-    y = dataset[:, -1]
     J = []
     nmi = []
     centroidsList = []
 
     for k in range(minK, maxK + 1):
-        print("k = ",k)
         kmean = KMeans(n_clusters=k, random_state=0).fit(X)
         var = []
         centroids = kmean.cluster_centers_
@@ -211,7 +203,14 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
                     test = np.outer(sub, sub)
                     varCluster = varCluster + test
             var.append(varCluster)
-        gamma, z = calGamma(X, piListInit[k - 2], centroids, var)
+
+        z = calZ(X, centroids)
+        countOne = np.count_nonzero(z, axis=0)
+        pi = []
+        for i in range(len(countOne)):
+            pi.append(countOne[i] / len(dataset))
+
+        gamma, z = calGamma(X, pi, centroids, var)
         mean = calMean(gamma, X, z)
         var = calVar(gamma, X, mean, z)
         pi = calPi(gamma)
@@ -221,8 +220,6 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
         iter = 0
         while iter<=maxIter:
             gamma, z = calGamma(X, pi, mean, var)
-            count2 = np.count_nonzero(z, axis=0)
-            # print("count2 = ", count2)
             mean = calMean(gamma, X, z)
             var = calVar(gamma, X, mean, z)
             pi = calPi(gamma)
@@ -230,7 +227,6 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
                 temp = 0
                 for q in range(k):
                     norm = multivariate_normal.pdf(X[p], mean[q], var[q], allow_singular=True)
-                    # norm = calNorm(X, mean[q], var[q])
                     temp = temp + pi[q]*norm
                 stoppingCriteria = stoppingCriteria + math.log(temp, 2)
             if (stoppingCriteria == stoppingCriteriaNew or abs(stoppingCriteriaNew-stoppingCriteria)<=tol):
@@ -238,182 +234,70 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
             stoppingCriteriaNew = stoppingCriteria
             iter = iter + 1
 
-        print("SSE = ",calJ(z, X, mean))
         J.append(calJ(z, X, mean))
-        print("NMI = ", calNMI(dataset, k, mean))
         nmi.append(calNMI(dataset, k, mean))
         centroidsList.append(centroids)
-        print("***********************************************************")
     return J, nmi
 
 def main():
-    maxK = 10
-    minK = 2
+
     print("dermatologyData: ")
     dermatologyData = pd.read_csv('dermatologyData.csv', sep=',', header=None)
     dermatologyData.reindex(np.random.permutation(dermatologyData.index))
-    # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
-    centroidsListDerm, varKListDerm, piListDerm = evaluate_algorithm(dermatologyData.values, maxK)
-    # evaluate_algorithmGMM(dataset_as_ndarray, noOfClusters, centroidsList, varKList, piList, tolerance, maxIter)
-    J_derm, nmiDerm = evaluate_algorithmGMM(dermatologyData.values, minK, maxK, centroidsListDerm,
-                                            varKListDerm, piListDerm, 1000, 300)
-    print("J_derm = ",J_derm)
-    print("nmiDerm = ", nmiDerm)
+    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    thread1 = myThread(1, 1, dermatologyData.values, 2, 20, 1000, 300, 7)
+    thread1.start()
+    threads.append(thread1)
+    print("")
 
-    # print("vowelsData: ")
-    # vowelsData = pd.read_csv('vowelsData.csv', sep=',', header=None)
-    # vowelsData.reindex(np.random.permutation(vowelsData.index))
-    # # evaluate_algorithm(dataset_as_ndarray, noOfClusterse)
-    # J_vowels , nmiVowels = evaluate_algorithm(vowelsData.values, 30)
-    # res2 = np.argmax(nmiVowels)
-    # print("optimal k = ", res2+2)
-    # print("best NMI = ", nmiVowels[res2])
-    # print("optimal SSE = ", J_vowels[res2])
-    # print("On setting the number of clusters equal to the number of classes:")
-    # print("k = 11")
-    # print("NMI = ", nmiVowels[9])
-    # print("SSE = ", J_vowels[9])
-    # print("")
-    #
-    # print("glassData: ")
-    # glassData = pd.read_csv('glassData.csv', sep=',', header=None)
-    # glassData.reindex(np.random.permutation(glassData.index))
-    # # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
-    # J_glass , nmiGlass = evaluate_algorithm(glassData.values, 20)
-    # res3 = np.argmax(nmiGlass)
-    # print("optimal k = ", res3+2)
-    # print("best NMI = ", nmiGlass[res3])
-    # print("optimal SSE = ", J_glass[res3])
-    # print("On setting the number of clusters equal to the number of classes:")
-    # print("k = 6")
-    # print("NMI = ", nmiGlass[4])
-    # print("SSE = ", J_glass[4])
-    # print("")
-    #
-    # print("ecoliData: ")
-    # ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
-    # ecoliData.reindex(np.random.permutation(ecoliData.index))
-    # # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
-    # J_ecoli , nmiEcoli = evaluate_algorithm(ecoliData.values, 20)
-    # res4 = np.argmax(nmiEcoli)
-    # print("optimal k = ", res4+2)
-    # print("best NMI = ", nmiEcoli[res4])
-    # print("optimal SSE = ", J_ecoli[res4])
-    # print("On setting the number of clusters equal to the number of classes:")
-    # print("k = 5")
-    # print("NMI = ", nmiEcoli[3])
-    # print("SSE = ", J_ecoli[3])
-    # print("")
-    #
-    # print("yeastData: ")
-    # yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
-    # yeastData.reindex(np.random.permutation(yeastData.index))
-    # # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
-    # J_yeast , nmiYeast = evaluate_algorithm(yeastData.values, 20)
-    # res5 = np.argmax(nmiYeast)
-    # print("optimal k = ", res5+2)
-    # print("best NMI = ", nmiYeast[res5])
-    # print("optimal SSE = ", J_yeast[res5])
-    # print("On setting the number of clusters equal to the number of classes:")
-    # print("k = 9")
-    # print("NMI = ", nmiYeast[7])
-    # print("SSE = ", J_yeast[7])
-    # print("")
-    #
-    # print("soybeanData: ")
-    # soybeanData = pd.read_csv('soybeanData.csv', sep=',', header=None)
-    # soybeanData.reindex(np.random.permutation(soybeanData.index))
-    # # evaluate_algorithm(dataset_as_ndarray, noOfClusters)
-    # J_soya , nmiSoya = evaluate_algorithm(soybeanData.values, 20)
-    # res6 = np.argmax(nmiSoya)
-    # print("optimal k = ", res6+2)
-    # print("best NMI = ", nmiSoya[res6])
-    # print("optimal SSE = ", J_soya[res6])
-    # print("On setting the number of clusters equal to the number of classes:")
-    # print("k = 15")
-    # print("NMI = ", nmiSoya[13])
-    # print("SSE = ", J_soya[13])
-    # print("")
+    print("vowelsData: ")
+    vowelsData = pd.read_csv('vowelsData.csv', sep=',', header=None)
+    vowelsData.reindex(np.random.permutation(vowelsData.index))
+    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    thread2 = myThread(2, 2, vowelsData.values, 2, 20, 1000, 300, 11)
+    thread2.start()
+    threads.append(thread2)
+    print("")
 
-    # fig1 = plt.figure()
-    # ax1 = fig1.add_subplot(121)
-    # ax1.set_title('dermatologyData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_derm, ls='--', marker='o', c='y', label='drop in error')
-    #
-    # ax2 = fig1.add_subplot(122)
-    # ax2.set_title('dermatologyData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiDerm, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig2 = plt.figure()
-    # ax1 = fig2.add_subplot(121)
-    # ax1.set_title('vowelsData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 30, 1), J_vowels, ls='--', marker='v', c='m', label='drop in error')
-    #
-    # ax2 = fig2.add_subplot(122)
-    # ax2.set_title('vowelsData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 30, 1), nmiVowels, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig3 = plt.figure()
-    # ax1 = fig3.add_subplot(121)
-    # ax1.set_title('glassData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_glass, ls='--', marker='^', c='c', label='drop in error')
-    #
-    # ax2 = fig3.add_subplot(122)
-    # ax2.set_title('glassData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiGlass, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig4 = plt.figure()
-    # ax1 = fig4.add_subplot(121)
-    # ax1.set_title('ecoliData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_ecoli, ls='--', marker='<', c='r', label='drop in error')
-    #
-    # ax2 = fig4.add_subplot(122)
-    # ax2.set_title('ecoliData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiEcoli, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig5 = plt.figure()
-    # ax1 = fig5.add_subplot(121)
-    # ax1.set_title('yeastData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_yeast, ls='--', marker='>', c='g', label='drop in error')
-    #
-    # ax2 = fig5.add_subplot(122)
-    # ax2.set_title('yeastData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiYeast, ls='--', marker='o', c='y', label='NMI')
-    #
-    # fig6 = plt.figure()
-    # ax1 = fig6.add_subplot(121)
-    # ax1.set_title('soybeanData')
-    # ax1.set_xlabel('Number of clusters')
-    # ax1.set_ylabel('Objective function / SSE')
-    # ax1.plot(np.arange(1, 20, 1), J_soya, ls='--', marker='s', c='b', label='drop in error')
-    #
-    # ax2 = fig6.add_subplot(122)
-    # ax2.set_title('soybeanData')
-    # ax2.set_xlabel('Number of clusters')
-    # ax2.set_ylabel('NMI')
-    # ax2.plot(np.arange(1, 20, 1), nmiSoya, ls='--', marker='o', c='y', label='NMI')
-    #
-    # plt.show()
+    print("glassData: ")
+    glassData = pd.read_csv('glassData.csv', sep=',', header=None)
+    glassData.reindex(np.random.permutation(glassData.index))
+    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    thread3 = myThread(3, 3, glassData.values, 2, 20, 1000, 300, 6)
+    thread3.start()
+    threads.append(thread3)
+    print("")
+
+    print("ecoliData: ")
+    ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
+    ecoliData.reindex(np.random.permutation(ecoliData.index))
+    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    thread4 = myThread(4, 4, ecoliData.values, 2, 20, 1000, 300, 5)
+    thread4.start()
+    threads.append(thread4)
+    print("")
+
+    print("yeastData: ")
+    yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
+    yeastData.reindex(np.random.permutation(yeastData.index))
+    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    thread5 = myThread(5, 5, yeastData.values, 2, 20, 1000, 300, 9)
+    thread5.start()
+    threads.append(thread5)
+    print("")
+
+    print("soybeanData: ")
+    soybeanData = pd.read_csv('soybeanData.csv', sep=',', header=None)
+    soybeanData.reindex(np.random.permutation(soybeanData.index))
+    # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
+    thread6 = myThread(6, 6, soybeanData.values, 2, 20, 1000, 300, 15)
+    thread6.start()
+    threads.append(thread6)
+    print("")
+
+    for t in threads:
+        t.join()
+    print("Exiting Main Thread")
 
 
 if __name__ == "__main__": main()

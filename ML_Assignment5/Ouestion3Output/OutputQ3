@@ -1,0 +1,54 @@
+
+dermatologyData:
+optimal k =  20
+best NMI =  0.40314841466309176
+optimal SSE =  7459.718891554912
+On setting the number of clusters equal to the number of classes:
+k = 7
+NMI =  0.21002062385923845
+SSE =  12299.177346262397
+
+vowelsData:
+optimal k =  30
+best NMI =  0.4741425665994169
+optimal SSE =  1601.5089790471302
+On setting the number of clusters equal to the number of classes:
+k = 11
+NMI =  0.41314627026569456
+SSE =  2293.5999252206148
+
+glassData:
+optimal k =  4
+best NMI =  0.37039782872267574
+optimal SSE =  118.73318268894218
+On setting the number of clusters equal to the number of classes:
+k = 6
+NMI =  0.3321064680063273
+SSE =  104.84809655064184
+
+ecoliData:
+optimal k =  4
+best NMI =  0.5923495209400129
+optimal SSE =  22.461518900024004
+On setting the number of clusters equal to the number of classes:
+k = 5
+NMI =  0.5816578710139132
+SSE =  20.119713831772575
+
+yeastData:
+optimal k =  16
+best NMI =  0.23696213344938546
+optimal SSE =  41.94407849030837
+On setting the number of clusters equal to the number of classes:
+k = 9
+NMI =  0.2213647063882976
+SSE =  53.40636461885645
+
+soybeanData:
+optimal k =  18
+best NMI =  0.6206396630075632
+optimal SSE =  2139.9622078244006
+On setting the number of clusters equal to the number of classes:
+k = 15
+NMI =  0.5924942639830604
+SSE =  2443.8387546594154
