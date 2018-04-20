@@ -135,8 +135,8 @@ def calGamma(X, pi, mean, var):
     for n in range(len(X)) :
         prob = []
         for k in range(len(pi)):
-            norm = multivariate_normal.pdf(X, mean[k], var[k], allow_singular=True)
-            prob.append(pi[k] * norm[n])
+            norm = multivariate_normal.pdf(X[n], mean[k], var[k], allow_singular=True)
+            prob.append(pi[k] * norm)
         den = np.sum(prob)
         # print("den = ", den)
         for k in range(len(pi)):
@@ -198,6 +198,7 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
     centroidsList = []
 
     for k in range(minK, maxK + 1):
+        print("k = ",k)
         kmean = KMeans(n_clusters=k, random_state=0).fit(X)
         var = []
         centroids = kmean.cluster_centers_
@@ -228,19 +229,21 @@ def evaluate_algorithmGMM(dataset, minK, maxK, centroidsListInit, varKListInit, 
             for p in range(len(X)):
                 temp = 0
                 for q in range(k):
-                    norm = multivariate_normal.pdf(X, mean[q], var[q], allow_singular=True)
+                    norm = multivariate_normal.pdf(X[p], mean[q], var[q], allow_singular=True)
                     # norm = calNorm(X, mean[q], var[q])
-                    temp = temp + pi[q]*norm[p]
+                    temp = temp + pi[q]*norm
                 stoppingCriteria = stoppingCriteria + math.log(temp, 2)
             if (stoppingCriteria == stoppingCriteriaNew or abs(stoppingCriteriaNew-stoppingCriteria)<=tol):
                 break;
             stoppingCriteriaNew = stoppingCriteria
             iter = iter + 1
 
+        print("SSE = ",calJ(z, X, mean))
         J.append(calJ(z, X, mean))
+        print("NMI = ", calNMI(dataset, k, mean))
         nmi.append(calNMI(dataset, k, mean))
         centroidsList.append(centroids)
-        # print("***********************************************************")
+        print("***********************************************************")
     return J, nmi
 
 def main():
