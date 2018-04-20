@@ -220,55 +220,47 @@ def main():
     # labelCount = 6
     # title = "glassData"
 
-    print("ecoliData: ")
-    ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
-    ecoliData.reindex(np.random.permutation(ecoliData.index))
-    minK = 2
-    maxK = 10
+    # print("ecoliData: ")
+    # ecoliData = pd.read_csv('ecoliData.csv', sep=',', header=None)
+    # ecoliData.reindex(np.random.permutation(ecoliData.index))
+    # minK = 2
+    # maxK = 10
+    # tol = 500
+    # maxIter = 500
+    # labelCount = 5
+    # title = "ecoliData"
+
+    print("yeastData: ")
+    yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
+    yeastData.reindex(np.random.permutation(yeastData.index))
+    minK = 5
+    maxK = 15
     tol = 500
     maxIter = 500
-    labelCount = 5
-    title = "ecoliData"
+    labelCount = 9
+    title = "yeastData"
 
-    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    # thread4 = myThread(4, 4, ecoliData.values, 2, 20, 1000, 300, 5, "ecoliData")
-    # thread4.start()
-    # threads.append(thread4)
-    # print("")
-    #
-    # print("yeastData: ")
-    # yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
-    # yeastData.reindex(np.random.permutation(yeastData.index))
-    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    # thread5 = myThread(5, 5, yeastData.values, 2, 20, 1000, 300, 9, "yeastData")
-    # thread5.start()
-    # threads.append(thread5)
-    # print("")
-    #
     # print("soybeanData: ")
     # soybeanData = pd.read_csv('soybeanData.csv', sep=',', header=None)
     # soybeanData.reindex(np.random.permutation(soybeanData.index))
-    # # myThread(threadID, counter, dataset, minK, maxK, maxIter, tol, labelCount)
-    # thread6 = myThread(6, 6, soybeanData.values, 2, 20, 1000, 300, 15, "soybeanData")
-    # thread6.start()
-    # threads.append(thread6)
-    # print("")
+    # minK = 10
+    # maxK = 19
+    # tol = 500
+    # maxIter = 500
+    # labelCount = 15
+    # title = "soybeanData"
 
-    # for t in threads:
-    #     t.join()
-    # print("Exiting Main Thread")
-
-    sse1, nmi1 = evaluate_algorithmGMM(ecoliData.values, minK, maxK, tol, maxIter)
+    sse1, nmi1 = evaluate_algorithmGMM(yeastData.values, minK, maxK, tol, maxIter)
     print("sse = ", sse1)
     print("nmi = ", nmi1)
     res = np.argmax(nmi1)
-    print("optimal k = ", res + 2)
+    print("optimal k = ", res+minK)
     print("best NMI = ", nmi1[res])
     print("optimal SSE = ", sse1[res])
     print("On setting the number of clusters equal to the number of classes:")
     print("k = ", labelCount)
-    print("NMI = ", nmi1[labelCount-2])
-    print("SSE = ", sse1[labelCount-2])
+    print("NMI = ", nmi1[labelCount-minK])
+    print("SSE = ", sse1[labelCount-minK])
     print("")
 
     fig1 = plt.figure()
