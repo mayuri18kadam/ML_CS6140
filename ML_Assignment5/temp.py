@@ -233,10 +233,10 @@ def main():
     print("yeastData: ")
     yeastData = pd.read_csv('yeastData.csv', sep=',', header=None)
     yeastData.reindex(np.random.permutation(yeastData.index))
-    minK = 5
-    maxK = 15
+    minK = 6
+    maxK = 12
     tol = 500
-    maxIter = 500
+    maxIter = 100
     labelCount = 9
     title = "yeastData"
 

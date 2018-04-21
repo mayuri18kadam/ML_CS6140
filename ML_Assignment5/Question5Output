@@ -1,0 +1,42 @@
+Q5.1)
+KMeans is a hard clustering algorithm which is fast and useful only in cases where the actual output label points are easily separable, i.e. where we can understand that the inter-cluster SSE is very small or neglible.
+GMM is a soft clustering algorithm that has a probabilistic approach and it is useful where the actual point labels are very close or overlapping space between 2 or more clusters. It can be used in cases which has a large inter-cluster SSE.
+GMM works with non-linear distribution of data as well unlike KMeans which assumes clusters to be spherical.
+
+Dermatology, Glass, Ecoli, Soyabean: GMM
+Small data size, less runtime.
+Also as we vary the number of clusters in the graph, it can be observed that the SSE is not steadily decreasing, suggesting possibility of overlapping data.
+
+Vowels, Yeast: KMeans
+Huge data size.
+Also as we vary the number of clusters in the graph, it can be observed that the SSE is steadily decreasing, suggesting possibility of non-overlapping data.
+
+Q5.2)
+As can be seen from the graph that the sum of inter-cluster SSE is steadily decreasing and NMI is increasing in general for all datasets. Also can be observed that count of optimal number of clusters (by considering both low/stable SSE and high NMI) is always somewhere close to the count of unique output labels. Hence we can conclude that both GMM and KMeans acheive good clustering results(i.e. clusters which are more pure and have less entrophy) when number os clusters is set approximately equal to the number of unique output labels.
+
+Q5.3)
+Yes, k-Means and GMM algorithms sensitive to how the clusters are initialized. With better selection of initial centroids, both the algorithms can result in significantly better quality of clusters with higher NMI and lower SSE and both algorithms can also converge faster, thus reducing runtime significantly.
+Also Kmeans algorithm can also easilty get stuck in local minima, hence it is advised to use the below mentioned methods multiple times before finally concluding a final set of centroids.
+
+For KMeans various cenriods selection methods can be:
+a) initial 'k' points from the datasets
+b) random 'k' points from the dataset
+c) divide the dataset in k random bins, and choose average point from each bin as the centroid to get 'k' centroids as the starting point.
+
+For GMM, generally final centroids as predicted by k-means is used as a starting point.
+
+Q5.4)
+I have used Euclidean distance as a metric to compute distance between points, which I feel is appropriate as it computes a direct and shortest distance between any 2 points in space.
+
+Dermatology, Soyabean:
+All feature values are discrete and linear valued. Hence Euclidean or Minkowski distance both can be used. Based on the 'p' value set Minkowski distance can be used as both Euclidean as well as City-block. Using both kind of distanes, cluster quality can be determined and a better metric can be used finally.
+
+Vowels, Glass, Ecoli, Yeast:
+All feature labels are continuous, hence euclidean is preferred. Manhattan or City-block distances cannot be computed.
+
+
+
+
+
+
+
