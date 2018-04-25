@@ -59,21 +59,68 @@ def calZScore(dataset, meanArr, stdArr):
             dataset[j, i] = (dataset[j, i] - meanArr[i]) / stdArr[i]
     return dataset
 
-def evaluate_algorithm(dataset, T):
-    dataset_train, dataset_test = train_test_split(dataset, test_size=0.20, random_state=42)
+def getError(dataset_train_zscore, featureIdx, threshold, instWgt):
+    y_pred = []
+    for row in dataset_train_zscore:
+        if row[featureIdx]<threshold :
+            y_pred.append(1)
+        else:
+            y_pred.append(-1)
+    error = 0
+    for n in range(len(y_pred)):
+        if y_pred[n] != dataset_train_zscore[n,-1]:
+            error = error + instWgt
+    return error, y_pred
 
-    # dataset_train_zscore is of shape[[],[],...[]] i.e. n*(orig_no_of_all_cols)
+def getNormalizationConst(y_actual, y_pred, instWgt, beta):
+    sum = 0
+    loss = 0
+    for n in range(len(y_actual)):
+        expForZ = math.exp(-1 * beta * y_actual[n] * y_pred[n])
+        expForLoss = math.exp(-1 * y_actual[n] * y_pred[n])
+        loss = loss + expForLoss*expForZ
+        sum = sum + instWgt*expForZ
+    return sum, loss
+
+def evaluate_algorithm(dataset, T, tol):
+    dataset_train, dataset_test = train_test_split(dataset, test_size=0.20, random_state=42)
     meanArr = np.mean(dataset_train, axis=0)
     stdArr = np.std(dataset_train, axis=0)
     dataset_train_zscore = calZScore(dataset_train, meanArr, stdArr)
     dataset_test_zscore = calZScore(dataset_test, meanArr, stdArr)
 
-    feature, threshold = getBestFeatureMidpoint(dataset_train_zscore, (1/len(dataset_train_zscore)))
+    for n in range(len(dataset_train_zscore)):
+        print("n = ",n)
+        instWgt = (1/len(dataset_train_zscore))
+        betaArr = []
+        featureIdxArr = []
+        thresholdArr = []
+        lossOld = 0
+        for t in range(T):
+            # print("t = ",t)
+            featureIdx, threshold = getBestFeatureMidpoint(dataset_train_zscore, instWgt)
+            featureIdxArr.append(featureIdx)
+            thresholdArr.append(threshold)
+            error, y_pred = getError(dataset_train_zscore, featureIdx, threshold, instWgt)
+            beta = 0.5 * math.log1p((1-error)/error)
+            betaArr.append(beta)
+            # print("beta = ",beta)
+            actualOutput = 1 if dataset_train_zscore[n,featureIdx]<threshold else -1
+            z, lossNew = getNormalizationConst(dataset_train_zscore[:,-1], y_pred, instWgt, beta)
+            instWgt = (instWgt * math.exp(-1 * beta * dataset_train_zscore[n,-1] * actualOutput))/z
+            # print("loss = ",lossNew)
+            # print("z = ", z)
+            # print("instWgt = ",instWgt)
+            if abs(lossNew - lossOld) <= tol:
+                break;
+            lossOld = lossNew
+    print("betaArr = ",betaArr)
+    print("featureIdxArr = ", featureIdxArr)
+    print("thresholdArr = ", thresholdArr)
 
 def main():
     print("breastcancer data:")
     breastcancer = pd.read_csv('breastcancer.csv', sep=',', header=None)
-    T = np.array([100, 200, 300, 400, 500])
-    evaluate_algorithm(breastcancer.values, T)
+    evaluate_algorithm(breastcancer.values, 25, 0.1)
 
 if __name__ == "__main__": main()
