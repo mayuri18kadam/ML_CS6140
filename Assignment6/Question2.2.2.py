@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import math
+import random
 
 def calMidpoints(feature) :
     featureUnique = np.unique(feature)
@@ -20,34 +21,9 @@ def calMidpoints(feature) :
     midpointsFinal = np.unique(midpoints)
     return midpointsFinal
 
-def calBestThreshold(feature, classCol, midpoints, instWgt) :
-    feature1 = np.vstack((feature, classCol)).T
-    feature1.sort(0)
-    errorDiff = -1
-    mid = -1
-    for m in midpoints:
-        error = 0
-        rownum = 0
-        for r in feature1:
-            if (r[0]<m and r[1]<=0) or (r[0]>=m and r[1]>0):
-                error = error+instWgt[rownum]
-            rownum = rownum + 1
-        if abs(0.5 - error) > errorDiff :
-            errorDiff = abs(0.5 - error)
-            mid = m
-    return errorDiff, mid
-
-def getBestFeatureMidpoint(xTrain, yTrain, instWgt):
-    finalErrorDiff = -1
-    finalMidpoint = -1
-    finalFeature = -1
-    for f in range(len(xTrain[0])):
-        midpoints = calMidpoints(xTrain[:,f])
-        errorDiff, midpoint = calBestThreshold(xTrain[:, f], yTrain, midpoints, instWgt)
-        if errorDiff > finalErrorDiff:
-            finalErrorDiff = errorDiff
-            finalMidpoint = midpoint
-            finalFeature = f
+def getBestFeatureMidpoint(xTrain):
+    finalFeature = random.choice(range(len(xTrain[0])))
+    finalMidpoint = random.choice(calMidpoints(xTrain[:, finalFeature]))
     return finalFeature, finalMidpoint
 
 def calZScore(dataset, meanArr, stdArr):
@@ -117,7 +93,7 @@ def evaluate_algorithm(dataset, T):
     for t in np.arange(1, T+1, 1):
         print("t = ",t)
         # fit a simple decision tree, compute error on that
-        featureIdx, threshold = getBestFeatureMidpoint(xTrain, yTrain, instWgt)
+        featureIdx, threshold = getBestFeatureMidpoint(xTrain)
         y_predTrain = calPredictedOutput(xTrain, featureIdx, threshold)
         y_predTest = calPredictedOutput(xTest, featureIdx, threshold)
         testLocalErr.append(getError(y_predTest, yTest, instWgt))
@@ -139,45 +115,90 @@ def evaluate_algorithm(dataset, T):
 def main():
     print("breastcancer data:")
     breastcancer = pd.read_csv('breastcancer.csv', sep=',', header=None)
-    # T = [1, 2, 3, 4, 5]
+    # T = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     # for t in T:
     #     print("main t = ",t)
     #     testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, t)
-    # t = 1: AccuracyScore = 89.47368421052632
-    # t = 2: AccuracyScore = 89.47368421052632
-    # t = 3: AccuracyScore = 100.0
-    # t = 4: AccuracyScore = 100.0
+    # t = 1: AccuracyScore = 100.0
+    # t = 2: AccuracyScore = 72.80701754385964
+    # t = 3: AccuracyScore = 99.12280701754386
+    # t = 4: AccuracyScore = 97.36842105263158
     # t = 5: AccuracyScore = 100.0
-    # Hence setting T=3 for breastcancer data
-    testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, 3)
+    # t = 6: AccuracyScore = 100.0
+    # t = 7: AccuracyScore = 83.33333333333333
+    # t = 8: AccuracyScore = 95.6140350877193
+    # t = 9: AccuracyScore = 91.2280701754386
+    # t = 10: AccuracyScore = 95.6140350877193
+    # t = 11: AccuracyScore = 95.6140350877193
+    # t = 12: AccuracyScore = 98.24561403508773
+    # t = 13: AccuracyScore = 79.82456140350877
+    # t = 14: AccuracyScore = 100.0
+    # t = 15: AccuracyScore = 98.24561403508773
+    # t = 16: AccuracyScore = 91.2280701754386
+    # t = 17: AccuracyScore = 91.2280701754386
+    # t = 18: AccuracyScore = 100.0
+    # t = 19: AccuracyScore = 87.71929824561404
+    # t = 20: AccuracyScore = 100.0
+    # Hence setting T=14 for breastcancer data
+    testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, 14)
 
     # print("diabetes data:")
     # diabetes = pd.read_csv('diabetes.csv', sep=',', header=None)
-    # T = [1, 2, 3, 4, 5]
+    # T = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     # for t in T:
     #     print("main t = ",t)
     #     testLocalErr, testErr, trainingErr = evaluate_algorithm(diabetes.values, t)
-    # t = 1: AccuracyScore = 88.31168831168831
-    # t = 2: AccuracyScore = 88.31168831168831
-    # t = 3: AccuracyScore = 100.0
-    # t = 4: AccuracyScore = 100.0
-    # t = 5: AccuracyScore = 100.0
+    # t = 1: AccuracyScore = 82.46753246753246
+    # t = 2: AccuracyScore = 70.77922077922078
+    # t = 3: AccuracyScore = 92.85714285714286
+    # t = 4: AccuracyScore = 64.28571428571429
+    # t = 5: AccuracyScore = 84.41558441558442
+    # t = 6: AccuracyScore = 77.92207792207792
+    # t = 7: AccuracyScore = 81.16883116883118
+    # t = 8: AccuracyScore = 76.62337662337663
+    # t = 9: AccuracyScore = 70.12987012987013
+    # t = 10: AccuracyScore = 66.23376623376623
+    # t = 11: AccuracyScore = 70.77922077922078
+    # t = 12: AccuracyScore = 68.83116883116882
+    # t = 13: AccuracyScore = 85.71428571428571
+    # t = 14: AccuracyScore = 69.48051948051948
+    # t = 15: AccuracyScore = 66.23376623376623
+    # t = 16: AccuracyScore = 68.83116883116882
+    # t = 17: AccuracyScore = 65.58441558441558
+    # t = 18: AccuracyScore = 64.28571428571429
+    # t = 19: AccuracyScore = 66.88311688311688
+    # t = 20: AccuracyScore = 79.22077922077922
     # Hence setting T=3 for diabetes data
     # testLocalErr, testErr, trainingErr = evaluate_algorithm(diabetes.values, 3)
 
     # print("spambase data:")
     # spambase = pd.read_csv('spambase.csv', sep=',', header=None)
-    # T = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    # T = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     # for t in T:
     #     print("main t = ",t)
     #     testLocalErr, testErr, trainingErr = evaluate_algorithm(spambase.values, t)
-    # t = 1: AccuracyScore = 82.41042345276873
-    # t = 2: AccuracyScore = 82.41042345276873
-    # t = 3: AccuracyScore = 100.0
-    # t = 4: AccuracyScore = 100.0
-    # t = 5: AccuracyScore = 100.0
-    # Hence setting T=3 for spambase data
-    # testLocalErr, testErr, trainingErr = evaluate_algorithm(spambase.values, 3)
+    # t = 1: AccuracyScore = 57.871878393051034
+    # t = 2: AccuracyScore = 58.19761129207383
+    # t = 3: AccuracyScore = 57.76330076004343
+    # t = 4: AccuracyScore = 57.65472312703583
+    # t = 5: AccuracyScore = 61.99782844733985
+    # t = 6: AccuracyScore = 58.957654723127035
+    # t = 7: AccuracyScore = 57.65472312703583
+    # t = 8: AccuracyScore = 60.26058631921824
+    # t = 9: AccuracyScore = 57.65472312703583
+    # t = 10: AccuracyScore = 57.65472312703583
+    # t = 11: AccuracyScore = 57.65472312703583
+    # t = 12: AccuracyScore = 57.65472312703583
+    # t = 13: AccuracyScore = 57.65472312703583
+    # t = 14: AccuracyScore = 57.65472312703583
+    # t = 15: AccuracyScore = 57.65472312703583
+    # t = 16: AccuracyScore = 57.65472312703583
+    # t = 17: AccuracyScore = 57.65472312703583
+    # t = 18: AccuracyScore = 57.65472312703583
+    # t = 19: AccuracyScore = 57.65472312703583
+    # t = 20: AccuracyScore = 57.65472312703583
+    # Hence setting T=5 for spambase data
+    # testLocalErr, testErr, trainingErr = evaluate_algorithm(spambase.values, 5)
 
     fig = plt.figure()
     ax1 = fig.add_subplot(221)
