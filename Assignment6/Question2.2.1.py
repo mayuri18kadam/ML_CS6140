@@ -25,6 +25,7 @@ def calBestThreshold(feature, classCol, midpoints, instWgt) :
     feature1.sort(0)
     errorDiff = -1
     mid = -1
+    sign = 0
     for m in midpoints:
         error = 0
         rownum = 0
@@ -33,9 +34,11 @@ def calBestThreshold(feature, classCol, midpoints, instWgt) :
                 error = error+instWgt[rownum]
             rownum = rownum + 1
         if abs(0.5 - error) > errorDiff :
+            sign = np.sign(0.5 - error)
+            # print("sign = ",sign)
             errorDiff = abs(0.5 - error)
             mid = m
-    return errorDiff, mid
+    return errorDiff, mid, sign
 
 def getBestFeatureMidpoint(xTrain, yTrain, instWgt):
     finalErrorDiff = -1
@@ -43,12 +46,12 @@ def getBestFeatureMidpoint(xTrain, yTrain, instWgt):
     finalFeature = -1
     for f in range(len(xTrain[0])):
         midpoints = calMidpoints(xTrain[:,f])
-        errorDiff, midpoint = calBestThreshold(xTrain[:, f], yTrain, midpoints, instWgt)
+        errorDiff, midpoint, sign = calBestThreshold(xTrain[:, f], yTrain, midpoints, instWgt)
         if errorDiff > finalErrorDiff:
             finalErrorDiff = errorDiff
             finalMidpoint = midpoint
             finalFeature = f
-    return finalFeature, finalMidpoint
+    return finalFeature, finalMidpoint, sign
 
 def calZScore(dataset, meanArr, stdArr):
     for i in range(len(dataset[0]) - 1):
@@ -66,13 +69,13 @@ def getError(y_pred, y_actual, instWgt):
 def calAccuracyScore(y_pred, y_actual):
     return sum(y_pred != y_actual)*100 / float(len(y_actual))
 
-def calPredictedOutput(X, featureIdx, threshold):
+def calPredictedOutput(X, featureIdx, threshold, sign):
     y_pred = []
     for row in X:
         if row[featureIdx]<threshold :
-            y_pred.append(1)
+            y_pred.append(1 if sign<0 else -1)
         else:
-            y_pred.append(-1)
+            y_pred.append(-1 if sign<0 else 1)
     return y_pred
 
 def getNormalizationConst(y_actual, y_pred, instWgt, beta):
@@ -89,10 +92,10 @@ def calEdge(xTrain, yTrain, featureIdx, threshold, instWgt):
         edge = edge + instWgt[n]*(yTrain[n]*actualOutput)
     return edge
 
-def getFinalPrediction(xTest, alphaArr, featureIdxArr, thresholdArr):
+def getFinalPrediction(xTest, alphaArr, featureIdxArr, thresholdArr, sign):
     y_predTrain = np.zeros(len(xTest))
     for n in range(len(alphaArr)):
-        temp = [float(alphaArr[n])*int(x) for x in calPredictedOutput(xTest, featureIdxArr[n], thresholdArr[n])]
+        temp = [float(alphaArr[n])*int(x) for x in calPredictedOutput(xTest, featureIdxArr[n], thresholdArr[n], sign)]
         y_predTrain = y_predTrain + temp
     return np.sign(y_predTrain)
 
@@ -113,13 +116,13 @@ def evaluate_algorithm(dataset, T):
     alphaArr = []
     featureIdxArr = []
     thresholdArr = []
-
+    sign = 0
     for t in np.arange(1, T+1, 1):
         print("t = ",t)
         # fit a simple decision tree, compute error on that
-        featureIdx, threshold = getBestFeatureMidpoint(xTrain, yTrain, instWgt)
-        y_predTrain = calPredictedOutput(xTrain, featureIdx, threshold)
-        y_predTest = calPredictedOutput(xTest, featureIdx, threshold)
+        featureIdx, threshold, sign = getBestFeatureMidpoint(xTrain, yTrain, instWgt)
+        y_predTrain = calPredictedOutput(xTrain, featureIdx, threshold, sign)
+        y_predTest = calPredictedOutput(xTest, featureIdx, threshold, sign)
         testLocalErr.append(getError(y_predTest, yTest, instWgt))
         featureIdxArr.append(featureIdx)
         thresholdArr.append(threshold)
@@ -129,77 +132,92 @@ def evaluate_algorithm(dataset, T):
         alphaArr.append(alpha)
         z = getNormalizationConst(yTrain, y_predTrain, instWgt, alpha)
         instWgt = np.multiply(instWgt, np.exp(-1 * alpha * np.exp(-1 * alpha * np.prod((y_predTrain, yTrain), axis=0))))/z
-        testErr.append(getError(getFinalPrediction(xTest, alphaArr, featureIdxArr, thresholdArr), yTest, instWgt))
-        trainingErr.append(getError(getFinalPrediction(xTrain, alphaArr, featureIdxArr, thresholdArr), yTrain, instWgt))
+        testErr.append(getError(getFinalPrediction(xTest, alphaArr, featureIdxArr, thresholdArr, sign), yTest, instWgt))
+        trainingErr.append(getError(getFinalPrediction(xTrain, alphaArr, featureIdxArr, thresholdArr, sign), yTrain, instWgt))
 
-    y_test_final = getFinalPrediction(xTest, alphaArr, featureIdxArr, thresholdArr)
+    y_test_final = getFinalPrediction(xTest, alphaArr, featureIdxArr, thresholdArr, sign)
     print("Accuracy Score = ",calAccuracyScore(y_test_final, yTest))
     return testLocalErr, testErr, trainingErr
 
 def main():
     print("breastcancer data:")
     breastcancer = pd.read_csv('breastcancer.csv', sep=',', header=None)
-    # T = [1, 2, 3, 4, 5]
+    # T = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     # for t in T:
     #     print("main t = ",t)
     #     testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, t)
     # t = 1: AccuracyScore = 89.47368421052632
-    # t = 2: AccuracyScore = 89.47368421052632
-    # t = 3: AccuracyScore = 100.0
-    # t = 4: AccuracyScore = 100.0
-    # t = 5: AccuracyScore = 100.0
+    # t = 2: AccuracyScore = 72.80701754385964
+    # t = 3: AccuracyScore = 89.47368421052632
+    # t = 4: AccuracyScore = 72.80701754385964
+    # t = 5: AccuracyScore = 89.47368421052632
+    # t = 6: AccuracyScore = 72.80701754385964
+    # t = 7: AccuracyScore = 89.47368421052632
+    # t = 8: AccuracyScore = 89.47368421052632
+    # t = 9: AccuracyScore = 89.47368421052632
+    # t = 10: AccuracyScore = 89.47368421052632
     # Hence setting T=3 for breastcancer data
-    testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, 10)
+    testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, 3)
 
-    # print("diabetes data:")
-    # diabetes = pd.read_csv('diabetes.csv', sep=',', header=None)
-    # T = [1, 2, 3, 4, 5]
+    print("diabetes data:")
+    diabetes = pd.read_csv('diabetes.csv', sep=',', header=None)
+    # T = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     # for t in T:
     #     print("main t = ",t)
     #     testLocalErr, testErr, trainingErr = evaluate_algorithm(diabetes.values, t)
     # t = 1: AccuracyScore = 88.31168831168831
-    # t = 2: AccuracyScore = 88.31168831168831
-    # t = 3: AccuracyScore = 100.0
-    # t = 4: AccuracyScore = 100.0
-    # t = 5: AccuracyScore = 100.0
+    # t = 2: AccuracyScore = 75.97402597402598
+    # t = 3: AccuracyScore = 64.28571428571429
+    # t = 4: AccuracyScore = 88.31168831168831
+    # t = 5: AccuracyScore = 64.28571428571429
+    # t = 6: AccuracyScore = 88.31168831168831
+    # t = 7: AccuracyScore = 75.97402597402598
+    # t = 8: AccuracyScore = 88.31168831168831
+    # t = 9: AccuracyScore = 88.31168831168831
+    # t = 10: AccuracyScore = 88.31168831168831
     # Hence setting T=3 for diabetes data
-    # testLocalErr, testErr, trainingErr = evaluate_algorithm(diabetes.values, 3)
+    testLocalErr, testErr, trainingErr = evaluate_algorithm(diabetes.values, 4)
 
-    # print("spambase data:")
-    # spambase = pd.read_csv('spambase.csv', sep=',', header=None)
+    print("spambase data:")
+    spambase = pd.read_csv('spambase.csv', sep=',', header=None)
     # T = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     # for t in T:
     #     print("main t = ",t)
     #     testLocalErr, testErr, trainingErr = evaluate_algorithm(spambase.values, t)
     # t = 1: AccuracyScore = 82.41042345276873
-    # t = 2: AccuracyScore = 82.41042345276873
-    # t = 3: AccuracyScore = 100.0
-    # t = 4: AccuracyScore = 100.0
-    # t = 5: AccuracyScore = 100.0
+    # t = 2: AccuracyScore = 75.2442996742671
+    # t = 3: AccuracyScore = 82.41042345276873
+    # t = 4: AccuracyScore = 75.2442996742671
+    # t = 5: AccuracyScore = 82.41042345276873
+    # t = 6: AccuracyScore = 75.2442996742671
+    # t = 7: AccuracyScore = 82.41042345276873
+    # t = 8: AccuracyScore = 82.41042345276873
+    # t = 9: AccuracyScore = 82.41042345276873
+    # t = 10: AccuracyScore = 82.41042345276873
     # Hence setting T=3 for spambase data
-    # testLocalErr, testErr, trainingErr = evaluate_algorithm(spambase.values, 3)
+    testLocalErr, testErr, trainingErr = evaluate_algorithm(spambase.values, 3)
 
-    fig = plt.figure()
-    ax1 = fig.add_subplot(221)
-    ax1.set_title('testLocalErr')
-    ax1.set_xlabel('T')
-    ax1.set_ylabel('testLocalErr')
-    ax1.plot(np.arange(1, len(testLocalErr)+1, 1), testLocalErr, ls='--', marker='o', c='m', label='testLocalErr')
-
-    ax2 = fig.add_subplot(222)
-    ax2.set_title('testErr')
-    ax2.set_xlabel('T')
-    ax2.set_ylabel('testErr')
-    ax2.plot(np.arange(1, len(testErr) + 1, 1), testErr, ls='--', marker='s', c='b', label='testErr')
-
-    ax3 = fig.add_subplot(223)
-    ax3.set_title('trainingErr')
-    ax3.set_xlabel('T')
-    ax3.set_ylabel('trainingErr')
-    ax3.plot(np.arange(1, len(trainingErr) + 1, 1), trainingErr, ls='--', marker='v', c='g', label='trainingErr')
-
-    plt.legend(loc='upper left')
-    plt.tight_layout(2, 2, 2)
-    plt.show()
+    # fig = plt.figure()
+    # ax1 = fig.add_subplot(221)
+    # ax1.set_title('testLocalErr')
+    # ax1.set_xlabel('T')
+    # ax1.set_ylabel('testLocalErr')
+    # ax1.plot(np.arange(1, len(testLocalErr)+1, 1), testLocalErr, ls='--', marker='o', c='m', label='testLocalErr')
+    #
+    # ax2 = fig.add_subplot(222)
+    # ax2.set_title('testErr')
+    # ax2.set_xlabel('T')
+    # ax2.set_ylabel('testErr')
+    # ax2.plot(np.arange(1, len(testErr) + 1, 1), testErr, ls='--', marker='s', c='b', label='testErr')
+    #
+    # ax3 = fig.add_subplot(223)
+    # ax3.set_title('trainingErr')
+    # ax3.set_xlabel('T')
+    # ax3.set_ylabel('trainingErr')
+    # ax3.plot(np.arange(1, len(trainingErr) + 1, 1), trainingErr, ls='--', marker='v', c='g', label='trainingErr')
+    #
+    # plt.legend(loc='upper left')
+    # plt.tight_layout(2, 2, 2)
+    # plt.show()
 
 if __name__ == "__main__": main()

@@ -1,10 +1,8 @@
 
 import numpy as np
-import math
-import random
-from sklearn.metrics import accuracy_score
 import matplotlib
 matplotlib.use('TkAgg')
+import random
 import matplotlib.pyplot as plt
 
 def calSigmoid(val):
@@ -64,7 +62,6 @@ def update(x_final, y_final, learning_rate, wAll):
     return wAll
 
 def getPredictedOutput(X, wAll):
-    # y_pred = np.zeros((len(X), len(X[0])))
     y_pred = []
     idx1 = 0
     for xRow in X:
@@ -77,15 +74,6 @@ def getPredictedOutput(X, wAll):
             y2[i] = 0 if y2[i]<0.5 else 1
         y_pred.append(y2)
         idx1 = idx1 + 1
-    # for xRow in X:
-    #     x_final = []
-    #     for ls in xRow:
-    #         x_final.append([ls])
-    #     x_final = np.array(x_final)
-    #     y1, y2 = feedForward(x_final, wAll)
-    #     for i in range(len(x_final)):
-    #         y_pred[idx1][i] = 0 if y2[i]*x_final[i]==0 else 1
-    #     idx1 = idx1 + 1
     return y_pred
 
 def calAccuracyScore(y_pred, y_actual):
@@ -116,7 +104,7 @@ def evaluate_algorithmGradDecent(X, y, learning_rate, noOfHiddenUnits, maxIter):
     wAll.append(w2)
 
     for iter in range(maxIter):
-        # random.shuffle(X)
+        random.shuffle(X)
         idx = 0
         for xRow in X:
             x_final = []
@@ -133,7 +121,6 @@ def evaluate_algorithmGradDecent(X, y, learning_rate, noOfHiddenUnits, maxIter):
             idx = idx + 1
 
     y_pred = getPredictedOutput(X, wAll)
-    # print("y_pred = ",y_pred)
     return calAccuracyScore(y_pred, y)
 
 def main():
