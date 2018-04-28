@@ -1,6 +1,7 @@
 
 import numpy as np
 import math
+import random
 from sklearn.metrics import accuracy_score
 import matplotlib
 matplotlib.use('TkAgg')
@@ -10,52 +11,99 @@ def calSigmoid(val):
     sigmoid = (1 / (1 + np.exp(val * -1)))
     return sigmoid
 
-def calLossFunc(X, y, w_curr):
-    loss = 0
-    o = np.zeros(len(w_curr))
-    for idx in range(len(X)):
-        sig = 0 if calSigmoid(np.dot(X[idx], w_curr[idx]))<0.5 else 1
-        o[idx] = sig
-        loss = loss + math.pow((y[idx] - o[idx]), 2)
-    return loss, o
+def feedForward(x_final, wAll):
+    o1 = np.zeros(len(wAll[0]))
+    o2 = np.zeros(len(wAll[1]))
 
-def getWeightsGradDecent(X, y, w, learning_rate, tolerance, maxIter):
-    loss = 0
-    loss_new = 0
-    for iter in range(maxIter):
-        for n in range(len(X)):
-            for wIdx in range(len(w)):
-                temp, o = calLossFunc(X[n], y[n], w[wIdx])
-                loss_new = loss_new + temp
-                w[wIdx] = w[wIdx] + (learning_rate * np.matmul(o.T, (np.ones(len(w[wIdx])) - o)) * np.dot(X[n], w[wIdx]))
-        loss = loss_new
-        if abs(loss_new - loss) <= tolerance:
-            return w
-    return w
+    for i in range(len(o1)):
+        prod1 = np.zeros(len(x_final))
+        for j in range(len(x_final)):
+            prod1[j] = x_final[j] * wAll[0][i][j]
+        o1[i] = calSigmoid(np.sum(prod1))
 
-def getPredictedOutputAndWeightsGradDecent(X, y, learning_rate, tolerance, maxIter, w):
-    w = getWeightsGradDecent(X, y, w, learning_rate, tolerance, maxIter)
-    print("w = ",w)
-    y_pred = np.zeros((len(y), len(y[0])))
-    for rowIndex in range(len(X)):
-        temp = np.zeros(len(y[0]))
-        for w_currIdx in range(len(w)):
-            xNew = []
-            for ls in X[rowIndex]:
-                xNew.append([ls])
-            xNew = np.array(xNew)
-            mulArr = np.prod((xNew, w[w_currIdx]), axis=0)
-            mulArrNew = []
-            for eleIdx in range(len(mulArr)):
-                sig = 0 if (calSigmoid(mulArr[eleIdx]) == 0.5) else 1
-                mulArrNew.append(sig)
-            temp = np.sum((temp, mulArrNew), axis=0)
-        temp[temp > 0] = 1
-        y_pred[rowIndex] = temp
-    print("y_pred = ",y_pred)
-    return y_pred, w
+    o1_final = []
+    for ls in o1:
+        o1_final.append([ls])
+    o1_final = np.array(o1_final)
+    for i in range(len(o2)):
+        prod1 = np.zeros(len(o1_final))
+        for j in range(len(o1_final)):
+            prod1[j] = o1_final[j] * wAll[1][i][j]
+        o2[i] = calSigmoid(np.sum(prod1))
 
-def evaluate_algorithmGradDecent(X, y, learning_rate, tolerance, noOfHiddenUnits, maxIter):
+    o2_final = []
+    for ls in o2:
+        o2_final.append([ls])
+    o2_final = np.array(o2_final)
+
+    return o1_final, o2_final
+
+def backPropogate(x_final, y_final, wAll, learning_rate, o1_final, o2_final):
+    # updating weights between hidden layer and output layer
+    for idx1 in range(len(wAll[1])):
+        for idx2 in range(len(wAll[1][idx1])):
+            wAll[1][idx1][idx2] = wAll[1][idx1][idx2] + \
+                                  (learning_rate * (y_final[idx1] - o2_final[idx1]) * o2_final[idx1] *
+                                   (1 - o2_final[idx1]) * o1_final[idx2])
+
+    # updating weights between hidden layer and input layer
+    for idx1 in range(len(wAll[0])):
+        for idx2 in range(len(wAll[0][idx1])):
+            # computing downstream sum
+            sum = 0
+            for idx3 in range(len(wAll[1])):
+                sum = sum + wAll[1][idx3][idx1]*x_final[idx2]
+            # update w
+            wAll[0][idx1][idx2] = wAll[0][idx1][idx2] + (learning_rate * o1_final[idx1] * (1 - o1_final[idx1]) * sum)/len(wAll[1])
+
+    return wAll
+
+def update(x_final, y_final, learning_rate, wAll):
+    o1_final, o2_final = feedForward(x_final, wAll)
+    wAll = backPropogate(x_final, y_final, wAll, learning_rate, o1_final, o2_final)
+    return wAll
+
+def getPredictedOutput(X, wAll):
+    # y_pred = np.zeros((len(X), len(X[0])))
+    y_pred = []
+    idx1 = 0
+    for xRow in X:
+        x_final = []
+        for ls in xRow:
+            x_final.append([ls])
+        x_final = np.array(x_final)
+        y1, y2 = feedForward(x_final, wAll)
+        for i in range(len(y2)):
+            y2[i] = 0 if y2[i]<0.5 else 1
+        y_pred.append(y2)
+        idx1 = idx1 + 1
+    # for xRow in X:
+    #     x_final = []
+    #     for ls in xRow:
+    #         x_final.append([ls])
+    #     x_final = np.array(x_final)
+    #     y1, y2 = feedForward(x_final, wAll)
+    #     for i in range(len(x_final)):
+    #         y_pred[idx1][i] = 0 if y2[i]*x_final[i]==0 else 1
+    #     idx1 = idx1 + 1
+    return y_pred
+
+def calAccuracyScore(y_pred, y_actual):
+    y_actualFinal = []
+    for idx in range(len(y_actual)):
+        y_final = []
+        for ls in y_actual[idx]:
+            y_final.append([float(ls)])
+        y_final = np.array(y_final)
+        y_actualFinal.append(y_final)
+    count = 0
+    for i in range(len(y_pred)):
+        for j in range(len(y_pred[0])):
+            if y_pred[i][j]==y_actualFinal[i][j]:
+                count = count + 1
+    return (count/64)*100
+
+def evaluate_algorithmGradDecent(X, y, learning_rate, noOfHiddenUnits, maxIter):
     # initializations
     wAll = []
     w1 = []
@@ -67,19 +115,26 @@ def evaluate_algorithmGradDecent(X, y, learning_rate, tolerance, noOfHiddenUnits
         w2.append(np.random.randn(noOfHiddenUnits, 1))
     wAll.append(w2)
 
+    for iter in range(maxIter):
+        # random.shuffle(X)
+        idx = 0
+        for xRow in X:
+            x_final = []
+            for ls in xRow:
+                x_final.append([ls])
+            x_final = np.array(x_final)
 
+            y_final = []
+            for ls in y[idx]:
+                y_final.append([ls])
+            y_final = np.array(y_final)
 
-    w = getWeightsGradDecent(X, y, w, learning_rate, tolerance, maxIter)
-    acc_score = []
-    while True :
-        y_pred, w = getPredictedOutputAndWeightsGradDecent(X, y, learning_rate, tolerance, maxIter, w)
-        score = accuracy_score(y, y_pred)*100
-        acc_score.append(score)
-        print("accuracy score = ",score)
-        if score > 95:
-            break
-    return score
-    # return acc_score
+            wAll = update(x_final, y_final, learning_rate, wAll)
+            idx = idx + 1
+
+    y_pred = getPredictedOutput(X, wAll)
+    # print("y_pred = ",y_pred)
+    return calAccuracyScore(y_pred, y)
 
 def main():
     X = np.array([[1, 0, 0, 0, 0, 0, 0, 0],
@@ -98,20 +153,21 @@ def main():
          [0, 0, 0, 0, 0, 1, 0, 0],
          [0, 0, 0, 0, 0, 0, 1, 0],
          [0, 0, 0, 0, 0, 0, 0, 1]])
-    # acc_score = []
-    # noOfHiddenUnits = [1,2,3,4,5,6,7,8,9,10]
-    # for n in noOfHiddenUnits:
-    #     # evaluate_algorithmGradDecent(X, y, learning_rate, tolerance, noOfHiddenUnits, maxIter)
-    #     score = evaluate_algorithmGradDecent(X, y, 0.00001, 0.00001, 1, 1000)
-    #     acc_score.append(score)
-    score = evaluate_algorithmGradDecent(X, y, 0.00001, 0.00001, 3, 1000)
+    acc_score = []
+    noOfHiddenUnits = [1,2,3,4,5,6,7,8,9,10]
+    for n in noOfHiddenUnits:
+        # evaluate_algorithmGradDecent(X, y, learning_rate, noOfHiddenUnits, maxIter)
+        score = evaluate_algorithmGradDecent(X, y, 0.00001, n, 1000)
+        print("score = ",score)
+        acc_score.append(score)
+    # score = evaluate_algorithmGradDecent(X, y, 0.001, 0.00001, 5, 1000)
 
-    # fig = plt.figure()
-    # ax1 = fig.add_subplot(111)
-    # ax1.set_title('acc_score VS noOfHiddenUnits')
-    # ax1.set_xlabel('noOfHiddenUnits')
-    # ax1.set_ylabel('acc_score')
-    # ax1.plot(noOfHiddenUnits, acc_score, ls='--', marker='o', c='m', label='acc_score')
-    # plt.show()
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax1.set_title('acc_score VS noOfHiddenUnits')
+    ax1.set_xlabel('noOfHiddenUnits')
+    ax1.set_ylabel('acc_score')
+    ax1.plot(noOfHiddenUnits, acc_score, ls='--', marker='o', c='m', label='acc_score')
+    plt.show()
 
 if __name__ == "__main__": main()
