@@ -35,6 +35,7 @@ def getWeightsGradDecent(X, y, w, learning_rate, tolerance, maxIter):
 
 def getPredictedOutputAndWeightsGradDecent(X, y, learning_rate, tolerance, maxIter, w):
     w = getWeightsGradDecent(X, y, w, learning_rate, tolerance, maxIter)
+    print("w = ",w)
     y_pred = np.zeros((len(y), len(y[0])))
     for rowIndex in range(len(X)):
         temp = np.zeros(len(y[0]))
@@ -51,12 +52,23 @@ def getPredictedOutputAndWeightsGradDecent(X, y, learning_rate, tolerance, maxIt
             temp = np.sum((temp, mulArrNew), axis=0)
         temp[temp > 0] = 1
         y_pred[rowIndex] = temp
+    print("y_pred = ",y_pred)
     return y_pred, w
 
 def evaluate_algorithmGradDecent(X, y, learning_rate, tolerance, noOfHiddenUnits, maxIter):
-    w = []
+    # initializations
+    wAll = []
+    w1 = []
+    w2 = []
     for val in range(noOfHiddenUnits):
-        w.append(np.random.randn(len(X[0]), 1))
+        w1.append(np.random.randn(len(X[0]), 1))
+    wAll.append(w1)
+    for val in range(len(X[0])):
+        w2.append(np.random.randn(noOfHiddenUnits, 1))
+    wAll.append(w2)
+
+
+
     w = getWeightsGradDecent(X, y, w, learning_rate, tolerance, maxIter)
     acc_score = []
     while True :

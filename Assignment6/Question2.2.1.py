@@ -149,7 +149,7 @@ def main():
     # t = 4: AccuracyScore = 100.0
     # t = 5: AccuracyScore = 100.0
     # Hence setting T=3 for breastcancer data
-    testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, 3)
+    testLocalErr, testErr, trainingErr = evaluate_algorithm(breastcancer.values, 10)
 
     # print("diabetes data:")
     # diabetes = pd.read_csv('diabetes.csv', sep=',', header=None)
