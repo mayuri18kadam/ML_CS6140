@@ -1,0 +1,148 @@
+
+Interpreting the results:
+
+1) 
+Using Multiway approach:
+Best nmin is:  0.05
+
+ 
+Accuracy test =  [87.5615763546798, 96.05911330049261, 93.4729064039409, 95.07389162561576, 94.82758620689656, 95.93596059113301, 94.82758620689656, 94.21182266009852, 94.58128078817734, 95.6896551724138]
+Standard Deviation test =  2.3447253879289294
+avg accuracy test =  94.22413793103448
+
+Class Confusion Matrix [edible, poisonous]:
+[[l11 l12]          [[4037  169]
+ [l21 l22]]    ->    [ 300 3614]]
+
+l11, l22 -> count of instances predicted correctly, eg. 4037 instances of edible were predicated by the algorithm, which were actually edible
+l12 -> count of false negatives, eg. 169 instances were predicted as poisonous, but they were actually edible
+l21 -> count of false positives -> eg. 300 instances was predicted as edible, but it actually was poisonous
+
+This shows that a total of 4037+3614 = 7651 values out of 8120 were predicted correctly
+
+
+
+Using binary approach:
+Best nmin is: 5
+ 
+Accuracy test =  [53.81773399014779, 51.970443349753694, 51.231527093596064, 51.970443349753694, 50.86206896551724, 54.679802955665025, 50.12315270935961, 52.463054187192114, 51.847290640394085, 49.01477832512315]
+Standard Deviation test =  1.5696053168822481
+avg accuracy test =  51.79802955665025
+
+Class Confusion Matrix [edible, poisonous]:
+[[l11 l12]     ->      [[4206    0]
+ [l21 l22]]             [3914    0]]
+
+l11, l22 -> count of instances predicted correctly, eg. 4206 instances of edible were predicated by the algorithm, which were actually edible
+l12 -> count of false negatives, eg. 0 instances were predicted as poisonous, but they were actually edible
+l21 -> count of false positives -> eg. 3914 instances was predicted as edible, but it actually was poisonous
+
+This shows that a total of 4206+0 = 4206 values out of 8120 were predicted correctly
+
+
+
+2) 
+As can be seen from above results, there is a vast difference between the accuracies predicted by multiway(for nmin=[0.05,0.1,0.15]) and binary(for nmin=[5,10,15])
+Smaller the nmin -> less the no. of instances at leaf nodes -> more depth of decision tree -> more features tested on decision making -> better accuracy
+for eg. for nmin = 0.05 -> algorithm stops if the number of instances at the leaf node drops below 8120*0.05
+As you increase the value of nmin this criteria becomes more and more inefficient as depth of tree reduces and no of instances at leaves increase.
+
+
+3)
+Check Q2ExtraCredit_Multiway.png and Q2ExtraCredit_Binary_nmin_5_10_15.png image files. 
+In multiway, training accuracy is slightly higher than test accuracy for most results.
+The model is nor overfitted (as there is not a significant drop in the accuracies between training and test data) nor is it underfitting as in the image it can be seen that
+the test accuracy curve attempts to follow the training accuracies.
+In binary, model is overfitting as training and testing curve overlap
+
+***********************************************************************************************************************************************************************
+
+Multiway:
+Best nmin is:  0.05
+
+
+For nmin =  0.05
+
+[[4037  169]
+ [ 300 3614]]
+Accuracy test =  [87.5615763546798, 96.05911330049261, 93.4729064039409, 95.07389162561576, 94.82758620689656, 95.93596059113301, 94.82758620689656, 94.21182266009852, 94.58128078817734, 95.6896551724138]
+Standard Deviation test =  2.3447253879289294
+avg accuracy test =  94.22413793103448
+
+Accuracy train =  [88.24575807334428, 95.62123700054734, 93.77394636015326, 95.34756431308156, 95.37493158182814, 95.63492063492063, 94.45812807881774, 94.18445539135195, 95.6759715380405, 95.5528188286809]
+Standard Deviation train =  2.147945328532469
+avg accuracy train =  94.38697318007662
+
+
+
+For nmin =  0.1
+
+[[4015  191]
+ [ 437 3477]]
+Accuracy test =  [80.66502463054186, 93.34975369458128, 93.4729064039409, 95.07389162561576, 94.82758620689656, 93.22660098522168, 93.34975369458128, 93.59605911330048, 92.24137931034483, 92.85714285714286]
+Standard Deviation test =  3.948115291640719
+avg accuracy test =  92.26600985221675
+
+Accuracy train =  [81.92391899288451, 93.07608100711549, 93.77394636015326, 95.34756431308156, 95.37493158182814, 93.08976464148878, 93.07608100711549, 92.9392446633826, 93.08976464148878, 93.02134646962233]
+Standard Deviation train =  3.6285830138401423
+avg accuracy train =  92.47126436781609
+
+
+
+For nmin =  0.15
+
+[[3881  325]
+ [ 473 3441]]
+Accuracy test =  [79.67980295566502, 93.34975369458128, 88.05418719211822, 93.10344827586206, 92.61083743842364, 93.22660098522168, 93.34975369458128, 88.66995073891626, 91.7487684729064, 87.93103448275862]
+Standard Deviation test =  4.103702556891152
+avg accuracy test =  90.17241379310346
+
+Accuracy train =  [79.29666119321291, 93.07608100711549, 88.73836891078271, 93.10344827586206, 93.15818281335522, 93.08976464148878, 93.07608100711549, 88.66995073891626, 92.48768472906403, 88.75205254515599]
+Standard Deviation train =  4.153983597972336
+avg accuracy train =  90.34482758620689
+
+********************************************************************************************************************************************************************************
+
+Using binary one-hot encoding: 
+Best nmin is:  5
+
+
+For nmin =  5
+
+[[4206    0]
+ [3914    0]]
+Accuracy test =  [53.81773399014779, 51.970443349753694, 51.231527093596064, 51.970443349753694, 50.86206896551724, 54.679802955665025, 50.12315270935961, 52.463054187192114, 51.847290640394085, 49.01477832512315]
+Standard Deviation test =  1.5696053168822481
+avg accuracy test =  51.79802955665025
+
+Accuracy train =  [51.573617952928295, 51.77887246852764, 51.86097427476738, 51.77887246852764, 51.902025177887246, 51.47783251231527, 51.98412698412699, 51.724137931034484, 51.79255610290093, 52.10727969348659]
+Standard Deviation train =  0.17440059076469558
+avg accuracy train =  51.79802955665025
+
+
+
+For nmin =  10
+
+[[4206    0]
+ [3914    0]]
+Accuracy test =  [53.81773399014779, 51.970443349753694, 51.231527093596064, 51.970443349753694, 50.86206896551724, 54.679802955665025, 50.12315270935961, 52.463054187192114, 51.847290640394085, 49.01477832512315]
+Standard Deviation test =  1.5696053168822481
+avg accuracy test =  51.79802955665025
+
+Accuracy train =  [51.573617952928295, 51.77887246852764, 51.86097427476738, 51.77887246852764, 51.902025177887246, 51.47783251231527, 51.98412698412699, 51.724137931034484, 51.79255610290093, 52.10727969348659]
+Standard Deviation train =  0.17440059076469558
+avg accuracy train =  51.79802955665025
+
+
+
+For nmin =  15
+
+[[4206    0]
+ [3914    0]]
+Accuracy test =  [53.81773399014779, 51.970443349753694, 51.231527093596064, 51.970443349753694, 50.86206896551724, 54.679802955665025, 50.12315270935961, 52.463054187192114, 51.847290640394085, 49.01477832512315]
+Standard Deviation test =  1.5696053168822481
+avg accuracy test =  51.79802955665025
+
+Accuracy train =  [51.573617952928295, 51.77887246852764, 51.86097427476738, 51.77887246852764, 51.902025177887246, 51.47783251231527, 51.98412698412699, 51.724137931034484, 51.79255610290093, 52.10727969348659]
+Standard Deviation train =  0.17440059076469558
+avg accuracy train =  51.79802955665025
